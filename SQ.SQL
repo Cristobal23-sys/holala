@@ -66,14 +66,10 @@ INSERT INTO pedidos (idcliente, idproducto, cantidad, fechapedido) VALUES
 (1, 4, 1, '2024-02-20'),
 (2, 5, 1, '2024-02-25');
 
--- PARTE 3: CREACIÓN DE VISTAS
--- ===============================================
-
--- 3.1. Vista para Mostrar Todos los Clientes con Nombre Completo y Estado
 CREATE VIEW vw_clientesvigentes AS
 SELECT 
     idclientes,
-    CONCAT(nombre, ' ', apellido) AS nombrecompleto,
+    nombre || ' ' || apellido AS nombrecompleto,
     CASE 
         WHEN activo = TRUE THEN 'ACTIVO'
         ELSE 'NO ACTIVO'
@@ -85,7 +81,7 @@ FROM clientes;
 CREATE VIEW vw_detallespedidos AS
 SELECT 
     p.idpedidos AS idpedido,
-    CONCAT(c.nombre, ' ', c.apellido) AS nombrecliente,
+    c.nombre || ' ' || c.apellido AS nombrecliente,
     pr.nombre AS nombreproducto,
     p.cantidad,
     p.fechapedido
@@ -117,7 +113,7 @@ GROUP BY pr.idproductos, pr.nombre;
 CREATE VIEW vw_pedidos_clientes_activos AS
 SELECT 
     p.idpedidos AS idpedido,
-    CONCAT(c.nombre, ' ', c.apellido) AS nombrecliente,
+    c.nombre || ' ' || c.apellido AS nombrecliente,
     pr.nombre AS nombreproducto,
     p.cantidad,
     p.fechapedido
@@ -140,41 +136,8 @@ WHERE p.idproducto IS NULL;
 CREATE VIEW vw_clientes_con_pedidos AS
 SELECT 
     c.idclientes AS idcliente,
-    CONCAT(c.nombre, ' ', c.apellido) AS nombrecliente,
+    c.nombre || ' ' || c.apellido AS nombrecliente,
     COUNT(p.idpedidos) AS totalpedidos
 FROM clientes c
 JOIN pedidos p ON c.idclientes = p.idcliente
 GROUP BY c.idclientes, c.nombre, c.apellido;
-
--- ===============================================
--- CONSULTAS DE VERIFICACIÓN
--- ===============================================
-
--- Verificar datos insertados
-SELECT 'CLIENTES' as tabla, COUNT(*) as total_registros FROM clientes
-UNION ALL
-SELECT 'PRODUCTOS' as tabla, COUNT(*) as total_registros FROM productos
-UNION ALL
-SELECT 'PEDIDOS' as tabla, COUNT(*) as total_registros FROM pedidos;
-
--- Probar las vistas creadas
-SELECT 'Vista: Clientes Vigentes' as descripcion;
-SELECT * FROM vw_clientesvigentes;
-
-SELECT 'Vista: Detalles de Pedidos' as descripcion;
-SELECT * FROM vw_detallespedidos;
-
-SELECT 'Vista: Total Ventas por Producto' as descripcion;
-SELECT * FROM vw_totalventasporproducto;
-
-SELECT 'Vista: Ventas por Producto' as descripcion;
-SELECT * FROM vw_ventasporproducto;
-
-SELECT 'Vista: Pedidos de Clientes Activos' as descripcion;
-SELECT * FROM vw_pedidos_clientes_activos;
-
-SELECT 'Vista: Productos No Vendidos' as descripcion;
-SELECT * FROM vw_productos_no_vendidos;
-
-SELECT 'Vista: Clientes con Pedidos' as descripcion;
-SELECT * FROM vw_clientes_con_pedidos;
