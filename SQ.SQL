@@ -1,18 +1,34 @@
--- Crear tablas si no existen
-CREATE TABLE IF NOT EXISTS regiones (
-    id SERIAL PRIMARY KEY,
+
+CREATE TABLE regiones (
+    id INT PRIMARY KEY AUTO_INCREMENT,
     nombre VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS comunas (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE comunas (
+    id INT PRIMARY KEY AUTO_INCREMENT,
     nombre VARCHAR(100) NOT NULL,
-    region_id INTEGER NOT NULL,
+    region_id INT NOT NULL,
     FOREIGN KEY (region_id) REFERENCES regiones(id)
 );
 
--- Insertar regiones y comunas
-BEGIN;
+CREATE TABLE profesiones (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE personas (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    region_id INT NOT NULL,
+    comuna_id INT NOT NULL,
+    profesion_id INT NOT NULL,
+    FOREIGN KEY (region_id) REFERENCES regiones(id),
+    FOREIGN KEY (comuna_id) REFERENCES comunas(id),
+    FOREIGN KEY (profesion_id) REFERENCES profesiones(id),
+    UNIQUE KEY (nombre, apellidos)
+);-- Crear tablas si no existen
+
 
 -- Región de Arica y Parinacota
 INSERT INTO regiones (id, nombre) VALUES (1, 'Arica y Parinacota') ON CONFLICT (id) DO NOTHING;
