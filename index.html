@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="ISO-8859-1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Formulario</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Mi Formulario</h1>
+        
+        <form id="personaForm">
+            <div class="form-group">
+                <label for="nombre">Nombre</label>
+                <input type="text" id="nombre" name="nombre" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="apellidos">Apellidos</label>
+                <input type="text" id="apellidos" name="apellidos" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="region">Región</label>
+                <select id="region" name="region" required>
+                    <option value="">Seleccione una región</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="comuna">Comuna</label>
+                <select id="comuna" name="comuna" required disabled>
+                    <option value="">Seleccione una comuna</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="profesion">Profesión</label>
+                <select id="profesion" name="profesion" required>
+                    <option value="">Seleccione una profesión</option>
+                </select>
+            </div>
+            
+            <button type="submit" id="submitBtn">Enviar</button>
+            <input type="hidden" id="personaId" name="personaId" value="">
+        </form>
+        
+        <div class="grid-container">
+            <h2>Datos Registrados</h2>
+            <table id="personasGrid">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Apellidos</th>
+                        <th>Región</th>
+                        <th>Comuna</th>
+                        <th>Profesión</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Los datos se cargarán aquí mediante AJAX -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,143 +1,107 @@
--- ===============================================
--- EJERCICIO POSTGRESQL: TABLAS, DATOS Y VISTAS
--- ===============================================
+-- Crear tablas si no existen
+CREATE TABLE IF NOT EXISTS regiones (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL
+);
 
--- PARTE 1: CREACIÓN DE TABLAS
--- ===============================================
-
--- Tabla clientes
-CREATE TABLE clientes (
-    idclientes SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS comunas (
+    id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
-    apellido VARCHAR(100) NOT NULL,
-    direccion VARCHAR(200),
-    activo BOOLEAN DEFAULT TRUE
+    region_id INTEGER NOT NULL,
+    FOREIGN KEY (region_id) REFERENCES regiones(id)
 );
 
--- Tabla productos
-CREATE TABLE productos (
-    idproductos SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    precio NUMERIC(10,2) NOT NULL
-);
+-- Insertar regiones y comunas
+BEGIN;
 
--- Tabla pedidos
-CREATE TABLE pedidos (
-    idpedidos SERIAL PRIMARY KEY,
-    idcliente INTEGER NOT NULL,
-    idproducto INTEGER NOT NULL,
-    cantidad INTEGER NOT NULL,
-    fechapedido DATE NOT NULL,
-    FOREIGN KEY (idcliente) REFERENCES clientes(idclientes),
-    FOREIGN KEY (idproducto) REFERENCES productos(idproductos)
-);
+-- Región de Arica y Parinacota
+INSERT INTO regiones (id, nombre) VALUES (1, 'Arica y Parinacota') ON CONFLICT (id) DO NOTHING;
+INSERT INTO comunas (id, nombre, region_id) VALUES 
+(1, 'Arica', 1),
+(2, 'Camarones', 1),
+(3, 'Putre', 1),
+(4, 'General Lagos', 1) ON CONFLICT (id) DO NOTHING;
 
--- PARTE 2: INSERCIÓN DE DATOS
--- ===============================================
+-- Región de Tarapacá
+INSERT INTO regiones (id, nombre) VALUES (2, 'Tarapacá') ON CONFLICT (id) DO NOTHING;
+INSERT INTO comunas (id, nombre, region_id) VALUES 
+(5, 'Iquique', 2),
+(6, 'Alto Hospicio', 2),
+(7, 'Pozo Almonte', 2),
+(8, 'Camiña', 2) ON CONFLICT (id) DO NOTHING;
 
--- Insertar datos en la tabla clientes
-INSERT INTO clientes (nombre, apellido, direccion, activo) VALUES
-('Juan', 'Pérez', 'Av. Principal 123, Santiago', TRUE),
-('María', 'González', 'Calle Los Robles 456, Valparaíso', TRUE),
-('Pedro', 'Martínez', 'Pasaje Las Flores 789, Concepción', FALSE),
-('Ana', 'López', 'Av. Libertad 321, La Serena', TRUE),
-('Carlos', 'Rodríguez', 'Calle Central 654, Temuco', FALSE),
-('Sofía', 'Hernández', 'Av. O\'Higgins 987, Rancagua', TRUE);
+-- Región de Antofagasta
+INSERT INTO regiones (id, nombre) VALUES (3, 'Antofagasta') ON CONFLICT (id) DO NOTHING;
+INSERT INTO comunas (id, nombre, region_id) VALUES 
+(9, 'Antofagasta', 3),
+(10, 'Mejillones', 3),
+(11, 'Sierra Gorda', 3),
+(12, 'Taltal', 3) ON CONFLICT (id) DO NOTHING;
 
--- Insertar datos en la tabla productos
-INSERT INTO productos (nombre, precio) VALUES
-('Laptop Dell Inspiron', 799990.00),
-('Mouse Inalámbrico Logitech', 25990.00),
-('Teclado Mecánico', 89990.00),
-('Monitor 24 pulgadas', 199990.00),
-('Auriculares Bluetooth', 49990.00),
-('Disco Duro Externo 1TB', 69990.00);
+-- Región de Atacama
+INSERT INTO regiones (id, nombre) VALUES (4, 'Atacama') ON CONFLICT (id) DO NOTHING;
+INSERT INTO comunas (id, nombre, region_id) VALUES 
+(13, 'Copiapó', 4),
+(14, 'Caldera', 4),
+(15, 'Tierra Amarilla', 4),
+(16, 'Chañaral', 4) ON CONFLICT (id) DO NOTHING;
 
--- Insertar datos en la tabla pedidos
-INSERT INTO pedidos (idcliente, idproducto, cantidad, fechapedido) VALUES
-(1, 1, 1, '2024-01-15'),
-(1, 2, 2, '2024-01-15'),
-(2, 3, 1, '2024-01-20'),
-(2, 4, 1, '2024-01-25'),
-(4, 1, 1, '2024-02-01'),
-(4, 5, 2, '2024-02-01'),
-(6, 2, 3, '2024-02-10'),
-(6, 6, 1, '2024-02-15'),
-(1, 4, 1, '2024-02-20'),
-(2, 5, 1, '2024-02-25');
-
-CREATE VIEW vw_clientesvigentes AS
-SELECT 
-    idclientes,
-    nombre || ' ' || apellido AS nombrecompleto,
-    CASE 
-        WHEN activo = TRUE THEN 'ACTIVO'
-        ELSE 'NO ACTIVO'
-    END AS vigente,
-    direccion
-FROM clientes;
-
--- 3.2. Vista para Mostrar los Detalles de los Pedidos
-CREATE VIEW vw_detallespedidos AS
-SELECT 
-    p.idpedidos AS idpedido,
-    c.nombre || ' ' || c.apellido AS nombrecliente,
-    pr.nombre AS nombreproducto,
-    p.cantidad,
-    p.fechapedido
-FROM pedidos p
-JOIN clientes c ON p.idcliente = c.idclientes
-JOIN productos pr ON p.idproducto = pr.idproductos;
-
--- 3.3. Vista para Calcular el Total de Ventas por Producto
-CREATE VIEW vw_totalventasporproducto AS
-SELECT 
-    pr.idproductos AS idproducto,
-    pr.nombre AS nombreproducto,
-    SUM(p.cantidad * pr.precio) AS totalventas
-FROM productos pr
-JOIN pedidos p ON pr.idproductos = p.idproducto
-GROUP BY pr.idproductos, pr.nombre;
-
--- 3.4. Vista para Mostrar la Cantidad de Veces que Cada Producto Ha Sido Vendido
-CREATE VIEW vw_ventasporproducto AS
-SELECT 
-    pr.idproductos AS idproducto,
-    pr.nombre AS nombreproducto,
-    SUM(p.cantidad) AS cantidadvendida
-FROM productos pr
-JOIN pedidos p ON pr.idproductos = p.idproducto
-GROUP BY pr.idproductos, pr.nombre;
-
--- 3.5. Vista para Mostrar los Pedidos por Cliente Activo
-CREATE VIEW vw_pedidos_clientes_activos AS
-SELECT 
-    p.idpedidos AS idpedido,
-    c.nombre || ' ' || c.apellido AS nombrecliente,
-    pr.nombre AS nombreproducto,
-    p.cantidad,
-    p.fechapedido
-FROM pedidos p
-JOIN clientes c ON p.idcliente = c.idclientes
-JOIN productos pr ON p.idproducto = pr.idproductos
-WHERE c.activo = TRUE;
-
--- 3.6. Vista para Mostrar los Productos que No Han Sido Vendidos
-CREATE VIEW vw_productos_no_vendidos AS
-SELECT 
-    pr.idproductos AS idproducto,
-    pr.nombre AS nombreproducto,
-    pr.precio
-FROM productos pr
-LEFT JOIN pedidos p ON pr.idproductos = p.idproducto
-WHERE p.idproducto IS NULL;
-
--- 3.7. Vista para Mostrar los Clientes que Han Realizado Pedidos
-CREATE VIEW vw_clientes_con_pedidos AS
-SELECT 
-    c.idclientes AS idcliente,
-    c.nombre || ' ' || c.apellido AS nombrecliente,
-    COUNT(p.idpedidos) AS totalpedidos
-FROM clientes c
-JOIN pedidos p ON c.idclientes = p.idcliente
-GROUP BY c.idclientes, c.nombre, c.apellido;
+CREATE OR REPLACE FUNCTION fn_persona_iu(
+    p_idpersona INTEGER,
+    p_nombre VARCHAR,
+    p_apellidos VARCHAR,
+    p_idprofesion INTEGER,
+    p_idregion INTEGER,
+    p_idcomuna INTEGER
+) RETURNS TEXT AS $$
+DECLARE
+    v_count INTEGER;
+    v_message TEXT;
+BEGIN
+    -- Verificar si la persona ya existe
+    IF p_idpersona IS NOT NULL AND p_idpersona > 0 THEN
+        -- Modo actualización
+        -- Verificar que no exista otra persona con el mismo nombre y apellido
+        SELECT COUNT(*) INTO v_count 
+        FROM personas 
+        WHERE nombre = p_nombre AND apellidos = p_apellidos AND id != p_idpersona;
+        
+        IF v_count > 0 THEN
+            RETURN 'Error: Ya existe una persona con ese nombre y apellido.';
+        END IF;
+        
+        -- Actualizar la persona
+        UPDATE personas 
+        SET nombre = p_nombre, 
+            apellidos = p_apellidos, 
+            profesion_id = p_idprofesion,
+            region_id = p_idregion,
+            comuna_id = p_idcomuna,
+            fecha_actualizacion = NOW()
+        WHERE id = p_idpersona;
+        
+        v_message := 'Persona actualizada correctamente.';
+    ELSE
+        -- Modo inserción
+        -- Verificar que no exista una persona con el mismo nombre y apellido
+        SELECT COUNT(*) INTO v_count 
+        FROM personas 
+        WHERE nombre = p_nombre AND apellidos = p_apellidos;
+        
+        IF v_count > 0 THEN
+            RETURN 'Error: Ya existe una persona con ese nombre y apellido.';
+        END IF;
+        
+        -- Insertar nueva persona
+        INSERT INTO personas (nombre, apellidos, profesion_id, region_id, comuna_id, fecha_creacion)
+        VALUES (p_nombre, p_apellidos, p_idprofesion, p_idregion, p_idcomuna, NOW());
+        
+        v_message := 'Persona creada correctamente.';
+    END IF;
+    
+    RETURN v_message;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN 'Error: ' || SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
