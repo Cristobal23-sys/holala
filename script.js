@@ -45,16 +45,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función para cargar regiones
     function loadRegiones() {
-        fetch('command.php?cmd=listarRegiones')
+        fetch('obtener_datos.php?tabla=regiones')
             .then(response => response.json())
             .then(data => {
-                if (data.error) {
-                    console.error('Error al cargar regiones:', data.error);
-                    return;
-                }
+                if (!data.success) throw new Error(data.error);
                 
                 regionSelect.innerHTML = '<option value="">Seleccione una región</option>';
-                data.forEach(region => {
+                data.data.forEach(region => {
                     const option = document.createElement('option');
                     option.value = region.id;
                     option.textContent = region.nombre;
@@ -66,16 +63,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función para cargar comunas
     function loadComunas(regionId) {
-        fetch(`command.php?cmd=listarComunas&region_id=${regionId}`)
+        fetch(`obtener_datos.php?tabla=comunas&region_id=${regionId}`)
             .then(response => response.json())
             .then(data => {
-                if (data.error) {
-                    console.error('Error al cargar comunas:', data.error);
-                    return;
-                }
+                if (!data.success) throw new Error(data.error);
                 
                 comunaSelect.innerHTML = '<option value="">Seleccione una comuna</option>';
-                data.forEach(comuna => {
+                data.data.forEach(comuna => {
                     const option = document.createElement('option');
                     option.value = comuna.id;
                     option.textContent = comuna.nombre;
@@ -87,16 +81,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función para cargar profesiones
     function loadProfesiones() {
-        fetch('command.php?cmd=listarProfesiones')
+        fetch('obtener_datos.php?tabla=profesiones')
             .then(response => response.json())
             .then(data => {
-                if (data.error) {
-                    console.error('Error al cargar profesiones:', data.error);
-                    return;
-                }
+                if (!data.success) throw new Error(data.error);
                 
                 profesionSelect.innerHTML = '<option value="">Seleccione una profesión</option>';
-                data.forEach(profesion => {
+                data.data.forEach(profesion => {
                     const option = document.createElement('option');
                     option.value = profesion.id;
                     option.textContent = profesion.nombre;
@@ -108,16 +99,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función para cargar personas en la grilla
     function loadPersonas() {
-        fetch('command.php?cmd=listarPersonas')
+        fetch('obtener_datos.php?tabla=personas')
             .then(response => response.json())
             .then(data => {
-                if (data.error) {
-                    console.error('Error al cargar personas:', data.error);
-                    return;
-                }
+                if (!data.success) throw new Error(data.error);
                 
                 personasGrid.innerHTML = '';
-                data.forEach(persona => {
+                data.data.forEach(persona => {
                     const row = document.createElement('tr');
                     
                     row.innerHTML = `
@@ -145,13 +133,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Función para editar una persona
     function editPersona(personaId) {
-        fetch(`command.php?cmd=obtenerPersona&id=${personaId}`)
+        fetch(`obtener_datos.php?tabla=personas&id=${personaId}`)
             .then(response => response.json())
-            .then(persona => {
-                if (persona.error) {
-                    console.error('Error al cargar persona:', persona.error);
-                    return;
-                }
+            .then(data => {
+                if (!data.success) throw new Error(data.error);
+                if (!data.data.length) throw new Error("Persona no encontrada");
+                
+                const persona = data.data[0];
                 
                 // Llenar el formulario con los datos
                 nombreInput.value = persona.nombre;
@@ -174,13 +162,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Desplazarse al formulario
                 form.scrollIntoView({ behavior: 'smooth' });
             })
-            .catch(error => console.error('Error al cargar persona:', error));
+            .catch(error => {
+                console.error('Error al cargar persona:', error);
+                alert(error.message);
+            });
     }
 
     // Función para insertar una nueva persona
     function insertPersona() {
         const formData = new URLSearchParams();
-        formData.append('cmd', 'guardarPersona');
+        formData.append('cmd', 'guardar_persona');
         formData.append('nombre', nombreInput.value);
         formData.append('apellidos', apellidosInput.value);
         formData.append('region_id', regionSelect.value);
@@ -193,25 +184,22 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.error) {
-                alert('Error: ' + data.error);
-            } else if (data[0] && data[0].error) {
-                alert('Error: ' + data[0].error);
-            } else if (data[0] && data[0].success) {
-                alert('Persona registrada exitosamente');
-                resetForm();
-                loadPersonas();
-            } else {
-                alert('Respuesta inesperada del servidor');
-            }
+            if (!data.success) throw new Error(data.error);
+            
+            alert('Persona registrada exitosamente');
+            resetForm();
+            loadPersonas();
         })
-        .catch(error => console.error('Error al registrar persona:', error));
+        .catch(error => {
+            console.error('Error al registrar persona:', error);
+            alert(error.message);
+        });
     }
 
     // Función para actualizar una persona
     function updatePersona() {
         const formData = new URLSearchParams();
-        formData.append('cmd', 'guardarPersona');
+        formData.append('cmd', 'guardar_persona');
         formData.append('id', personaIdInput.value);
         formData.append('nombre', nombreInput.value);
         formData.append('apellidos', apellidosInput.value);
@@ -225,19 +213,16 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.error) {
-                alert('Error: ' + data.error);
-            } else if (data[0] && data[0].error) {
-                alert('Error: ' + data[0].error);
-            } else if (data[0] && data[0].success) {
-                alert('Persona actualizada exitosamente');
-                resetForm();
-                loadPersonas();
-            } else {
-                alert('Respuesta inesperada del servidor');
-            }
+            if (!data.success) throw new Error(data.error);
+            
+            alert('Persona actualizada exitosamente');
+            resetForm();
+            loadPersonas();
         })
-        .catch(error => console.error('Error al actualizar persona:', error));
+        .catch(error => {
+            console.error('Error al actualizar persona:', error);
+            alert(error.message);
+        });
     }
 
     // Función para validar el formulario

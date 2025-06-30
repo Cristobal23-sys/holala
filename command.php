@@ -1,192 +1,65 @@
 <?php
+header('Content-Type: application/json');
 include 'conexion.php';
 
-$cmd = $_REQUEST["cmd"]; //$_POST O $_GET
-switch ($cmd) {
-    case 'listarRegiones':
-        $sql = "SELECT id, nombre FROM regiones ORDER BY nombre";
-        $result = pg_query($conn, $sql);
-        
-        $obj = array();
-        $lastError = pg_last_error($conn);
-        
-        if ($lastError) {
-            array_push($obj, array("error" => $lastError));
-        } else {
-            while ($row = pg_fetch_assoc($result)) {
-                array_push($obj, $row);
+$cmd = $_REQUEST['cmd'] ?? '';
+
+try {
+    switch ($cmd) {
+        case 'guardar_persona':
+            $required = ['nombre', 'apellidos', 'region_id', 'comuna_id', 'profesion_id'];
+            foreach ($required as $field) {
+                if (empty($_REQUEST[$field])) {
+                    throw new Exception("El campo $field es requerido");
+                }
             }
-        }
-        
-        echo json_encode($obj);
-        break;
-        
-    case 'listarComunas':
-        if (!isset($_REQUEST["region_id"]) || empty($_REQUEST["region_id"])) {
-            echo json_encode([["error" => "El parámetro region_id es requerido."]]);
-            break;
-        }
-        
-        $regionId = $_REQUEST["region_id"];
-        $sql = "SELECT id, nombre FROM comunas WHERE region_id = $1 ORDER BY nombre";
-        $result = pg_query_params($conn, $sql, array($regionId));
-        
-        $obj = array();
-        $lastError = pg_last_error($conn);
-        
-        if ($lastError) {
-            array_push($obj, array("error" => $lastError));
-        } else {
-            while ($row = pg_fetch_assoc($result)) {
-                array_push($obj, $row);
+            
+            $id = $_REQUEST['id'] ?? null;
+            $nombre = $_REQUEST['nombre'];
+            $apellidos = $_REQUEST['apellidos'];
+            $regionId = $_REQUEST['region_id'];
+            $comunaId = $_REQUEST['comuna_id'];
+            $profesionId = $_REQUEST['profesion_id'];
+            
+            // Verificar que la comuna pertenezca a la región
+            $sqlCheck = "SELECT 1 FROM ajax.comunas WHERE id = $1 AND region_id = $2";
+            $resultCheck = pg_query_params($conn, $sqlCheck, array($comunaId, $regionId));
+            if (pg_num_rows($resultCheck) == 0) {
+                throw new Exception("La comuna no pertenece a la región seleccionada");
             }
-        }
-        
-        echo json_encode($obj);
-        break;
-        
-    case 'listarProfesiones':
-        $sql = "SELECT id, nombre FROM profesiones ORDER BY nombre";
-        $result = pg_query($conn, $sql);
-        
-        $obj = array();
-        $lastError = pg_last_error($conn);
-        
-        if ($lastError) {
-            array_push($obj, array("error" => $lastError));
-        } else {
-            while ($row = pg_fetch_assoc($result)) {
-                array_push($obj, $row);
-            }
-        }
-        
-        echo json_encode($obj);
-        break;
-        
-    case 'listarPersonas':
-        $sql = "SELECT p.id, p.nombre, p.apellidos, r.nombre as region, c.nombre as comuna, pr.nombre as profesion 
-                FROM personas p
-                JOIN regiones r ON p.region_id = r.id
-                JOIN comunas c ON p.comuna_id = c.id
-                JOIN profesiones pr ON p.profesion_id = pr.id
-                ORDER BY p.apellidos, p.nombre";
-        $result = pg_query($conn, $sql);
-        
-        $obj = array();
-        $lastError = pg_last_error($conn);
-        
-        if ($lastError) {
-            array_push($obj, array("error" => $lastError));
-        } else {
-            while ($row = pg_fetch_assoc($result)) {
-                array_push($obj, $row);
-            }
-        }
-        
-        echo json_encode($obj);
-        break;
-        
-    case 'obtenerPersona':
-        if (!isset($_REQUEST["id"]) || empty($_REQUEST["id"])) {
-            echo json_encode([["error" => "El parámetro id es requerido."]]);
-            break;
-        }
-        
-        $id = $_REQUEST["id"];
-        $sql = "SELECT p.id, p.nombre, p.apellidos, p.region_id, p.comuna_id, p.profesion_id 
-                FROM personas p
-                WHERE p.id = $1";
-        $result = pg_query_params($conn, $sql, array($id));
-        
-        $obj = array();
-        $lastError = pg_last_error($conn);
-        
-        if ($lastError) {
-            array_push($obj, array("error" => $lastError));
-        } else {
-            if (pg_num_rows($result) > 0) {
-                $row = pg_fetch_assoc($result);
-                array_push($obj, $row);
+            
+            if ($id) {
+                // Actualizar
+                $sql = "UPDATE ajax.personas SET 
+                        nombre = $1, 
+                        apellidos = $2, 
+                        region_id = $3, 
+                        comuna_id = $4, 
+                        profesion_id = $5,
+                        fecha_actualizacion = NOW()
+                        WHERE id = $6
+                        RETURNING id";
+                $params = array($nombre, $apellidos, $regionId, $comunaId, $profesionId, $id);
             } else {
-                array_push($obj, array("error" => "Persona no encontrada."));
+                // Insertar
+                $sql = "INSERT INTO ajax.personas 
+                        (nombre, apellidos, region_id, comuna_id, profesion_id)
+                        VALUES ($1, $2, $3, $4, $5)
+                        RETURNING id";
+                $params = array($nombre, $apellidos, $regionId, $comunaId, $profesionId);
             }
-        }
-        
-        echo json_encode($obj);
-        break;
-        
-    case 'guardarPersona':
-        $requiredParams = ['nombre', 'apellidos', 'region_id', 'comuna_id', 'profesion_id'];
-        $missingParams = [];
-        
-        foreach ($requiredParams as $param) {
-            if (!isset($_REQUEST[$param]) || empty($_REQUEST[$param])) {
-                $missingParams[] = $param;
+            
+            $result = pg_query_params($conn, $sql, $params);
+            
+            if (!$result) {
+                throw new Exception(pg_last_error($conn));
             }
-        }
-        
-        if (!empty($missingParams)) {
-            echo json_encode([["error" => "Faltan parámetros: " . implode(', ', $missingParams)]]);
-            break;
-        }
-        
-        $nombre = $_REQUEST["nombre"];
-        $apellidos = $_REQUEST["apellidos"];
-        $region_id = $_REQUEST["region_id"];
-        $comuna_id = $_REQUEST["comuna_id"];
-        $profesion_id = $_REQUEST["profesion_id"];
-        $id = isset($_REQUEST["id"]) ? $_REQUEST["id"] : null;
-        
-        // Verificar si ya existe una persona con el mismo nombre y apellido
-        $sqlCheck = "SELECT id FROM personas WHERE nombre = $1 AND apellidos = $2";
-        $paramsCheck = array($nombre, $apellidos);
-        
-        if ($id) {
-            $sqlCheck .= " AND id != $3";
-            $paramsCheck[] = $id;
-        }
-        
-        $resultCheck = pg_query_params($conn, $sqlCheck, $paramsCheck);
-        
-        if (pg_num_rows($resultCheck) > 0) {
-            echo json_encode([["error" => "Ya existe una persona con ese nombre y apellido."]]);
-            break;
-        }
-        
-        if ($id) {
-            // Actualizar persona existente
-            $sql = "UPDATE personas SET nombre = $1, apellidos = $2, region_id = $3, comuna_id = $4, profesion_id = $5 
-                    WHERE id = $6 
-                    RETURNING id";
-            $params = array($nombre, $apellidos, $region_id, $comuna_id, $profesion_id, $id);
-        } else {
-            // Insertar nueva persona
-            $sql = "INSERT INTO personas (nombre, apellidos, region_id, comuna_id, profesion_id) 
-                    VALUES ($1, $2, $3, $4, $5) 
-                    RETURNING id";
-            $params = array($nombre, $apellidos, $region_id, $comuna_id, $profesion_id);
-        }
-        
-        $result = pg_query_params($conn, $sql, $params);
-        $lastError = pg_last_error($conn);
-        
-        $obj = array();
-        
-        if ($lastError) {
-            array_push($obj, array("error" => $lastError));
-        } else {
+            
             $row = pg_fetch_assoc($result);
-            array_push($obj, array(
-                "success" => true,
-                "id" => $row['id'],
-                "message" => $id ? "Persona actualizada correctamente." : "Persona creada correctamente."
-            ));
-        }
-        
-        echo json_encode($obj);
-        break;
-        
-    case 'fn_persona_iu':
+            echo json_encode(['success' => true, 'id' => $row['id']]);
+            break;
+            
+        case 'fn_persona_iu':
         // Implementación similar al ejemplo proporcionado
         if (!isset($_REQUEST["idpersona"]) || !isset($_REQUEST["nombre"]) || empty($_REQUEST["nombre"]) || 
             !isset($_REQUEST["apellidos"]) || empty($_REQUEST["apellidos"]) || 
@@ -224,9 +97,11 @@ switch ($cmd) {
 
         echo json_encode($obj);
         break;
-        
-    default:
-        echo json_encode([["error" => "Comando no reconocido."]]);
-        break;
+            
+        default:
+            throw new Exception("Comando no reconocido");
+    }
+} catch (Exception $e) {
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
 ?>
