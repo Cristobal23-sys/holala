@@ -57,3 +57,33 @@ function mostrarNotas() {
     const iframe = document.getElementById('visorNotas');
     iframe.contentDocument.getElementById('contenidoNotas').innerHTML = `<p>${texto}</p>`;
 }
+
+
+
+body {
+  font-family: sans-serif;
+  padding: 20px;
+  background: #f9f9f9;
+}
+
+textarea {
+  width: 100%;
+  height: 100px;
+  margin-bottom: 10px;
+  padding: 10px;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+iframe {
+  width: 100%;
+  height: 200px;
+  border: 1px solid #ccc;
+  margin-top: 20px;
+  background: white;
+}
