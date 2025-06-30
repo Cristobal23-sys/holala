@@ -1,67 +1,76 @@
 <?php
 header('Content-Type: application/json');
-include 'conexion.php';
+require_once 'conexion.php';
 
-$tabla = $_GET['tabla'] ?? '';
-$id = $_GET['id'] ?? null;
+// Habilitar errores para depuración
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 try {
-    switch ($tabla) {
-        case 'regiones':
-            $sql = "SELECT id, nombre FROM ajax.regiones ORDER BY nombre";
-            $result = pg_query($conn, $sql);
-            break;
-            
-        case 'comunas':
-            if (!isset($_GET['region_id'])) {
-                throw new Exception("Parámetro region_id es requerido");
-            }
-            $regionId = $_GET['region_id'];
-            $sql = "SELECT id, nombre FROM ajax.comunas WHERE region_id = $1 ORDER BY nombre";
-            $result = pg_query_params($conn, $sql, array($regionId));
-            break;
-            
-        case 'profesiones':
-            $sql = "SELECT id, nombre FROM ajax.profesiones ORDER BY nombre";
-            $result = pg_query($conn, $sql);
-            break;
-            
-        case 'personas':
-            if ($id) {
-                $sql = "SELECT p.*, r.nombre as region_nombre, c.nombre as comuna_nombre, pr.nombre as profesion_nombre 
-                        FROM ajax.personas p
-                        JOIN ajax.regiones r ON p.region_id = r.id
-                        JOIN ajax.comunas c ON p.comuna_id = c.id
-                        JOIN ajax.profesiones pr ON p.profesion_id = pr.id
-                        WHERE p.id = $1";
-                $result = pg_query_params($conn, $sql, array($id));
-            } else {
-                $sql = "SELECT p.id, p.nombre, p.apellidos, r.nombre as region, c.nombre as comuna, pr.nombre as profesion 
-                        FROM ajax.personas p
-                        JOIN ajax.regiones r ON p.region_id = r.id
-                        JOIN ajax.comunas c ON p.comuna_id = c.id
-                        JOIN ajax.profesiones pr ON p.profesion_id = pr.id
-                        ORDER BY p.apellidos, p.nombre";
-                $result = pg_query($conn, $sql);
-            }
-            break;
-            
-        default:
-            throw new Exception("Tabla no válida");
+    // Obtener todas las regiones
+    $queryRegiones = "SELECT id, nombre FROM ajax.regiones ORDER BY nombre";
+    $resultRegiones = pg_query($conn, $queryRegiones);
+    if (!$resultRegiones) throw new Exception('Error al obtener regiones: ' . pg_last_error($conn));
+    
+    $regiones = [];
+    while ($row = pg_fetch_assoc($resultRegiones)) {
+        $regiones[] = $row;
     }
+
+    // Obtener todas las comunas (luego se filtran por región en el frontend)
+    $queryComunas = "SELECT id, nombre, region_id FROM ajax.comunas ORDER BY nombre";
+    $resultComunas = pg_query($conn, $queryComunas);
+    if (!$resultComunas) throw new Exception('Error al obtener comunas: ' . pg_last_error($conn));
     
-    if (!$result) {
-        throw new Exception(pg_last_error($conn));
+    $comunas = [];
+    while ($row = pg_fetch_assoc($resultComunas)) {
+        $comunas[] = $row;
     }
+
+    // Obtener todas las profesiones
+    $queryProfesiones = "SELECT id, nombre FROM ajax.profesiones ORDER BY nombre";
+    $resultProfesiones = pg_query($conn, $queryProfesiones);
+    if (!$resultProfesiones) throw new Exception('Error al obtener profesiones: ' . pg_last_error($conn));
     
-    $data = [];
-    while ($row = pg_fetch_assoc($result)) {
-        $data[] = $row;
+    $profesiones = [];
+    while ($row = pg_fetch_assoc($resultProfesiones)) {
+        $profesiones[] = $row;
     }
+
+    // Obtener todas las personas con sus relaciones
+    $queryPersonas = "SELECT p.id, p.nombre, p.apellidos, 
+                             r.id as region_id, r.nombre as region_nombre,
+                             c.id as comuna_id, c.nombre as comuna_nombre,
+                             pr.id as profesion_id, pr.nombre as profesion_nombre
+                      FROM ajax.personas p
+                      JOIN ajax.regiones r ON p.region_id = r.id
+                      JOIN ajax.comunas c ON p.comuna_id = c.id
+                      JOIN ajax.profesiones pr ON p.profesion_id = pr.id
+                      ORDER BY p.apellidos, p.nombre";
+    $resultPersonas = pg_query($conn, $queryPersonas);
+    if (!$resultPersonas) throw new Exception('Error al obtener personas: ' . pg_last_error($conn));
     
-    echo json_encode(['success' => true, 'data' => $data]);
-    
+    $personas = [];
+    while ($row = pg_fetch_assoc($resultPersonas)) {
+        $personas[] = $row;
+    }
+
+    // Devolver todos los datos juntos
+    echo json_encode([
+        'success' => true,
+        'regiones' => $regiones,
+        'comunas' => $comunas,
+        'profesiones' => $profesiones,
+        'personas' => $personas
+    ]);
+
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
+} finally {
+    // Cerrar conexión
+    if (isset($conn)) pg_close($conn);
 }
 ?>
