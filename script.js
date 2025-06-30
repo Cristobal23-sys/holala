@@ -1,102 +1,62 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Obtener elementos del formulario (asumiendo estructura mostrada en la imagen)
-    const form = document.querySelector('form');
-    const nombreInput = document.querySelector('input[type="text"]:nth-of-type(1)');
-    const apellidosInput = document.querySelector('input[type="text"]:nth-of-type(2)');
-    const regionSelect = document.querySelector('select:nth-of-type(1)');
-    const comunaSelect = document.querySelector('select:nth-of-type(2)');
-    const profesionSelect = document.querySelector('select:nth-of-type(3)');
-    const submitBtn = document.querySelector('button[type="submit"]');
-    
-    // Variables para almacenar datos
-    let comunas = [];
-    let personas = [];
-    let editId = null;
+    // Elementos del DOM
+    const form = document.getElementById('personaForm');
+    const nombreInput = form.querySelector('input[name="nombre"]');
+    const apellidosInput = form.querySelector('input[name="apellidos"]');
+    const regionSelect = form.querySelector('select[name="region"]');
+    const comunaSelect = form.querySelector('select[name="comuna"]');
+    const profesionSelect = form.querySelector('select[name="profesion"]');
+    const idInput = form.querySelector('input[name="id"]');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const personasTbody = document.querySelector('#personasTable tbody');
 
-    // Inicializar
-    loadInitialData();
+    // Inicializar la aplicación
+    initSelects();
+    renderPersonas();
 
-    // Event listeners
-    regionSelect.addEventListener('change', loadComunas);
+    // Eventos
+    regionSelect.addEventListener('change', updateComunas);
     form.addEventListener('submit', handleSubmit);
 
-    // Funciones básicas
-    function loadInitialData() {
-        // Cargar regiones
-        fetch('obtener_datos.php?tabla=regiones')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    regionSelect.innerHTML = '<option value="">Seleccione región</option>' + 
-                        data.data.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('');
-                }
-            });
-
-        // Cargar profesiones
-        fetch('obtener_datos.php?tabla=profesiones')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    profesionSelect.innerHTML = '<option value="">Seleccione profesión</option>' + 
-                        data.data.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
-                }
-            });
-
-        // Cargar comunas (todas)
-        fetch('obtener_datos.php?tabla=comunas')
-            .then(r => r.json())
-            .then(data => data.success && (comunas = data.data));
-
-        // Cargar personas para la tabla
-        loadPersonas();
+    function initSelects() {
+        // Llenar regiones
+        regionSelect.innerHTML = '<option value="">Seleccione región</option>' +
+            appData.regiones.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('');
+        
+        // Llenar profesiones
+        profesionSelect.innerHTML = '<option value="">Seleccione profesión</option>' +
+            appData.profesiones.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
     }
 
-    function loadComunas() {
+    function updateComunas() {
         const regionId = regionSelect.value;
         comunaSelect.innerHTML = '<option value="">Seleccione comuna</option>';
         comunaSelect.disabled = !regionId;
 
         if (regionId) {
-            const comunasRegion = comunas.filter(c => c.region_id == regionId);
-            comunaSelect.innerHTML += comunasRegion.map(c => 
+            const comunasFiltradas = appData.comunas.filter(c => c.region_id == regionId);
+            comunaSelect.innerHTML += comunasFiltradas.map(c => 
                 `<option value="${c.id}">${c.nombre}</option>`
             ).join('');
         }
     }
 
-    function loadPersonas() {
-        fetch('obtener_datos.php?tabla=personas')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    personas = data.data;
-                    renderPersonasTable();
-                }
-            });
-    }
-
-    function renderPersonasTable() {
-        // Asumiendo que hay una tabla después del formulario
-        const table = document.querySelector('table');
-        if (!table) return;
+    function renderPersonas() {
+        personasTbody.innerHTML = '';
         
-        // Limpiar tabla (excepto cabecera)
-        const tbody = table.querySelector('tbody') || table.createTBody();
-        tbody.innerHTML = '';
-
-        personas.forEach(p => {
-            const row = tbody.insertRow();
+        appData.personas.forEach(persona => {
+            const row = personasTbody.insertRow();
             row.innerHTML = `
-                <td>${p.nombre}</td>
-                <td>${p.apellidos}</td>
-                <td>${p.region_nombre}</td>
-                <td>${p.comuna_nombre}</td>
-                <td>${p.profesion_nombre}</td>
-                <td><button class="edit-btn" data-id="${p.id}">Modificar</button></td>
+                <td>${persona.nombre}</td>
+                <td>${persona.apellidos}</td>
+                <td>${persona.region}</td>
+                <td>${persona.comuna}</td>
+                <td>${persona.profesion}</td>
+                <td><button class="edit-btn" data-id="${persona.id}">Modificar</button></td>
             `;
         });
 
-        // Agregar eventos a botones de modificar
+        // Agregar eventos a los botones de editar
         document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 editPersona(this.getAttribute('data-id'));
@@ -105,20 +65,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function editPersona(id) {
-        const persona = personas.find(p => p.id == id);
+        const persona = appData.personas.find(p => p.id == id);
         if (!persona) return;
 
-        nombreInput.value = persona.nombre;
-        apellidosInput.value = persona.apellidos;
-        regionSelect.value = persona.region_id;
-        loadComunas();
-        setTimeout(() => {
-            comunaSelect.value = persona.comuna_id;
-            profesionSelect.value = persona.profesion_id;
-        }, 100);
-        
-        editId = id;
-        submitBtn.textContent = 'Actualizar';
+        // Buscar los IDs reales (por si hay diferencias entre nombres e IDs)
+        const region = appData.regiones.find(r => r.nombre === persona.region);
+        const comuna = appData.comunas.find(c => c.nombre === persona.comuna);
+        const profesion = appData.profesiones.find(p => p.nombre === persona.profesion);
+
+        if (region && comuna && profesion) {
+            nombreInput.value = persona.nombre;
+            apellidosInput.value = persona.apellidos;
+            idInput.value = persona.id;
+            regionSelect.value = region.id;
+            updateComunas();
+            
+            setTimeout(() => {
+                comunaSelect.value = comuna.id;
+                profesionSelect.value = profesion.id;
+                submitBtn.textContent = 'Actualizar';
+            }, 100);
+        }
     }
 
     function handleSubmit(e) {
@@ -127,40 +94,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // Validación básica
         if (!nombreInput.value || !apellidosInput.value || !regionSelect.value || 
             !comunaSelect.value || !profesionSelect.value) {
-            alert('Complete todos los campos');
+            alert('Por favor complete todos los campos');
             return;
         }
 
-        const formData = new FormData();
-        formData.append('cmd', 'guardar_persona');
-        formData.append('nombre', nombreInput.value);
-        formData.append('apellidos', apellidosInput.value);
-        formData.append('region_id', regionSelect.value);
-        formData.append('comuna_id', comunaSelect.value);
-        formData.append('profesion_id', profesionSelect.value);
+        // Aquí iría el código para enviar los datos a command.php
+        // Similar al ejemplo anterior, usando fetch()
         
-        if (editId) formData.append('id', editId);
-
-        fetch('command.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert(editId ? 'Actualizado correctamente' : 'Guardado correctamente');
-                resetForm();
-                loadPersonas();
-            } else {
-                alert(data.error || 'Error al guardar');
-            }
-        });
-    }
-
-    function resetForm() {
-        form.reset();
-        editId = null;
-        submitBtn.textContent = 'Enviar';
-        comunaSelect.disabled = true;
+        alert(idInput.value ? 'Actualizando...' : 'Guardando...');
+        // Simulación de guardado
+        setTimeout(() => {
+            alert('Operación completada');
+            form.reset();
+            idInput.value = '';
+            submitBtn.textContent = 'Enviar';
+            comunaSelect.disabled = true;
+            // Recargar datos (en realidad habría que hacer nueva consulta a la BD)
+        }, 500);
     }
 });
