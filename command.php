@@ -56,6 +56,62 @@ try {
 
             echo json_encode(['success' => true, 'id' => $row['id']]);
             break;
+            // obtener regiones
+case 'get_regiones':
+    $res = pg_query($conn, "SELECT id, nombre FROM ajax.regiones ORDER BY nombre");
+    echo json_encode(pg_fetch_all($res));
+    break;
+
+// obtener comunas por region
+case 'get_comunas':
+    $regionId = $_GET['region_id'] ?? 0;
+    $res = pg_query_params($conn, "SELECT id, nombre FROM ajax.comunas WHERE region_id = $1 ORDER BY nombre", [$regionId]);
+    echo json_encode(pg_fetch_all($res));
+    break;
+
+// obtener profesiones
+case 'get_profesiones':
+    $res = pg_query($conn, "SELECT id, nombre FROM ajax.profesiones ORDER BY nombre");
+    echo json_encode(pg_fetch_all($res));
+    break;
+
+// obtener personas
+case 'get_personas':
+    $sql = "SELECT p.id, p.nombre, p.apellidos, r.nombre as region, c.nombre as comuna, pr.nombre as profesion 
+            FROM ajax.personas p
+            JOIN ajax.regiones r ON r.id = p.region_id
+            JOIN ajax.comunas c ON c.id = p.comuna_id
+            JOIN ajax.profesiones pr ON pr.id = p.profesion_id
+            ORDER BY p.apellidos, p.nombre";
+    $res = pg_query($conn, $sql);
+    echo json_encode(pg_fetch_all($res));
+    break;
+
+// obtener persona por ID
+case 'get_persona':
+    $id = $_GET['id'] ?? 0;
+    $res = pg_query_params($conn, "SELECT * FROM ajax.personas WHERE id = $1", [$id]);
+    echo json_encode(pg_fetch_assoc($res));
+    break;
+
+// verificar duplicado
+case 'verificar_duplicado':
+    $nombre = $_POST['nombre'] ?? '';
+    $apellidos = $_POST['apellidos'] ?? '';
+    $id = $_POST['id'] ?? null;
+
+    $sql = "SELECT 1 FROM ajax.personas WHERE LOWER(nombre) = LOWER($1) AND LOWER(apellidos) = LOWER($2)";
+    $params = [$nombre, $apellidos];
+
+    if ($id) {
+        $sql .= " AND id != $3";
+        $params[] = $id;
+    }
+
+    $res = pg_query_params($conn, $sql, $params);
+    echo json_encode(['duplicado' => pg_num_rows($res) > 0]);
+    break;
+
 
         default:
             throw new Exception("Comando no reconocido");
