@@ -1,109 +1,137 @@
-function initForm() {
+document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('personaForm');
-    const nombre = form.nombre;
-    const apellidos = form.apellidos;
-    const region = form.region;
-    const comuna = form.comuna;
-    const profesion = form.profesion;
-    const id = form.id;
-    const button = form.querySelector('button');
-    const tbody = document.querySelector('#personasTable tbody');
+    const regionSelect = form.region;
+    const comunaSelect = form.comuna;
+    const profesionSelect = form.profesion;
+    const btnSubmit = form.querySelector('button');
+    const inputId = form.querySelector('input[name="id"]');
+    const tableBody = document.querySelector('#personasTable tbody');
 
-    region.innerHTML = '<option value="">Seleccione región</option>' +
-        appData.regiones.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('');
-    profesion.innerHTML = '<option value="">Seleccione profesión</option>' +
-        appData.profesiones.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+    // Cargar regiones y profesiones con AJAX
+    fetch('command.php?cmd=get_regiones')
+        .then(res => res.json())
+        .then(data => {
+            regionSelect.innerHTML = '<option value="">Seleccione región</option>';
+            data.forEach(reg => {
+                regionSelect.innerHTML += `<option value="${reg.id}">${reg.nombre}</option>`;
+            });
+        });
 
-    region.addEventListener('change', () => {
-        const regionId = region.value;
-        comuna.innerHTML = '<option value="">Seleccione comuna</option>';
-        comuna.disabled = !regionId;
-        if (regionId) {
-            const comunas = appData.comunas.filter(c => c.region_id == regionId);
-            comuna.innerHTML += comunas.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-        }
+    fetch('command.php?cmd=get_profesiones')
+        .then(res => res.json())
+        .then(data => {
+            profesionSelect.innerHTML = '<option value="">Seleccione profesión</option>';
+            data.forEach(p => {
+                profesionSelect.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+            });
+        });
+
+    // Al cambiar región, cargar comunas
+    regionSelect.addEventListener('change', () => {
+        comunaSelect.innerHTML = '<option value="">Cargando...</option>';
+        comunaSelect.disabled = true;
+        fetch(`command.php?cmd=get_comunas&region_id=${regionSelect.value}`)
+            .then(res => res.json())
+            .then(data => {
+                comunaSelect.innerHTML = '<option value="">Seleccione comuna</option>';
+                data.forEach(c => {
+                    comunaSelect.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+                });
+                comunaSelect.disabled = false;
+            });
     });
 
-    form.addEventListener('submit', function (e) {
+    // Enviar formulario
+    form.addEventListener('submit', e => {
         e.preventDefault();
 
-        if (!nombre.value || !apellidos.value || !region.value || !comuna.value || !profesion.value) {
-            alert("Todos los campos son obligatorios");
-            return;
-        }
+        const formData = new FormData(form);
+        formData.append('cmd', 'guardar_persona');
 
-        fetch('command.php', {
+        // Validación de duplicados
+        fetch('command.php?cmd=verificar_duplicado', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                cmd: 'guardar_persona',
-                id: id.value,
-                nombre: nombre.value,
-                apellidos: apellidos.value,
-                region_id: region.value,
-                comuna_id: comuna.value,
-                profesion_id: profesion.value
-            })
+            body: formData
         })
-        .then(res => res.json())
-        .then(res => {
-            if (res.success) {
-                alert("Guardado exitoso");
-                loadData();
-                form.reset();
-                id.value = '';
-                comuna.disabled = true;
-                button.textContent = 'Enviar';
-            } else {
-                alert("Error: " + res.error);
+        .then(r => r.json())
+        .then(dup => {
+            if (dup.duplicado) {
+                alert("Ya existe una persona con ese nombre y apellido.");
+                return;
             }
+
+            // Enviar datos para guardar o actualizar
+            fetch('command.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Datos guardados correctamente.');
+                    form.reset();
+                    inputId.value = '';
+                    btnSubmit.textContent = 'Enviar';
+                    comunaSelect.disabled = true;
+                    cargarTabla();
+                } else {
+                    alert("Error: " + data.error);
+                }
+            });
         });
     });
 
-    function loadData() {
-        fetch('obtener_datos.php')
-            .then(response => response.json())
+    // Cargar tabla
+    function cargarTabla() {
+        fetch('command.php?cmd=get_personas')
+            .then(res => res.json())
             .then(data => {
-                if (data.success) {
-                    appData = data;
-                    renderTable();
-                }
+                tableBody.innerHTML = '';
+                data.forEach(p => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${p.nombre}</td>
+                        <td>${p.apellidos}</td>
+                        <td>${p.region}</td>
+                        <td>${p.comuna}</td>
+                        <td>${p.profesion}</td>
+                        <td><button data-id="${p.id}" class="modificar">Modificar</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
             });
     }
 
-    function renderTable() {
-        tbody.innerHTML = '';
-        appData.personas.forEach(p => {
-            const row = tbody.insertRow();
-            row.innerHTML = `
-                <td>${p.nombre}</td>
-                <td>${p.apellidos}</td>
-                <td>${p.region_nombre}</td>
-                <td>${p.comuna_nombre}</td>
-                <td>${p.profesion_nombre}</td>
-                <td><button data-id="${p.id}" class="edit-btn">Modificar</button></td>
-            `;
-        });
+    // Al hacer clic en "Modificar"
+    tableBody.addEventListener('click', e => {
+        if (e.target.classList.contains('modificar')) {
+            const id = e.target.dataset.id;
 
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', function () {
-                const persona = appData.personas.find(p => p.id == this.dataset.id);
-                if (!persona) return;
+            fetch(`command.php?cmd=get_persona&id=${id}`)
+                .then(res => res.json())
+                .then(p => {
+                    form.nombre.value = p.nombre;
+                    form.apellidos.value = p.apellidos;
+                    form.region.value = p.region_id;
+                    inputId.value = p.id;
 
-                nombre.value = persona.nombre;
-                apellidos.value = persona.apellidos;
-                id.value = persona.id;
-                region.value = persona.region_id;
-                region.dispatchEvent(new Event('change'));
+                    // cargar comunas para esa región
+                    fetch(`command.php?cmd=get_comunas&region_id=${p.region_id}`)
+                        .then(res => res.json())
+                        .then(comunas => {
+                            comunaSelect.innerHTML = '<option value="">Seleccione comuna</option>';
+                            comunas.forEach(c => {
+                                comunaSelect.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+                            });
+                            comunaSelect.disabled = false;
+                            form.comuna.value = p.comuna_id;
+                        });
 
-                setTimeout(() => {
-                    comuna.value = persona.comuna_id;
-                    profesion.value = persona.profesion_id;
-                    button.textContent = 'Actualizar';
-                }, 100);
-            });
-        });
-    }
+                    form.profesion.value = p.profesion_id;
+                    btnSubmit.textContent = 'Actualizar';
+                });
+        }
+    });
 
-    renderTable();
-}
+    cargarTabla();
+});
