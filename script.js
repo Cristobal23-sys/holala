@@ -135,3 +135,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cargarTabla();
 });
+
+
+
+
+function cargaHorario() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'Command.php?cmd=obtener_horarios', true);
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            var select = document.getElementById('idhorario');
+            
+            if (xhr.status !== 200) {
+                select.innerHTML = '<option value="">Error al cargar horarios</option>';
+                console.error('Error HTTP:', xhr.status);
+                return;
+            }
+            
+            try {
+                var response = xhr.responseText;
+                var data = JSON.parse(response);
+                
+                // Validar que sea un array
+                if (!Array.isArray(data)) {
+                    throw new Error('La respuesta no es un array');
+                }
+                
+                // Limpiar y agregar opción por defecto
+                select.innerHTML = '<option value="">Seleccione horario</option>';
+                
+                // Llenar select con horarios
+                data.forEach(function(horario) {
+                    // Validar estructura esperada
+                    if (horario && horario.idhorario !== undefined && horario.descripcion !== undefined) {
+                        var option = document.createElement('option');
+                        option.value = horario.idhorario;
+                        option.textContent = horario.descripcion;
+                        select.appendChild(option);
+                    }
+                });
+                
+                // Si no se agregaron opciones
+                if (select.options.length === 1) {
+                    select.innerHTML = '<option value="">No hay horarios disponibles</option>';
+                }
+                
+            } catch (e) {
+                console.error('Error al procesar horarios:', e, 'Respuesta:', response);
+                select.innerHTML = '<option value="">Error cargando horarios</option>';
+            }
+        }
+    };
+    
+    xhr.onerror = function() {
+        console.error('Error de red al cargar horarios');
+        document.getElementById('idhorario').innerHTML = '<option value="">Error de conexión</option>';
+    };
+    
+    xhr.send();
+}
