@@ -1,122 +1,102 @@
 <?php
-header('Content-Type: application/json');
-include 'conexion.php';
+include 'Conexion.php';
 
-$cmd = $_REQUEST['cmd'] ?? '';
+$cmd = isset($_POST['cmd']) ? $_POST['cmd'] : '';
 
-try {
-    switch ($cmd) {
-        case 'guardar_persona':
-            $required = ['nombre', 'apellidos', 'region_id', 'comuna_id', 'profesion_id'];
-            foreach ($required as $field) {
-                if (empty($_REQUEST[$field])) {
-                    throw new Exception("El campo $field es requerido");
-                }
-            }
-
-            $id = $_REQUEST['id'] ?? null;
-            $nombre = $_REQUEST['nombre'];
-            $apellidos = $_REQUEST['apellidos'];
-            $regionId = $_REQUEST['region_id'];
-            $comunaId = $_REQUEST['comuna_id'];
-            $profesionId = $_REQUEST['profesion_id'];
-
-            // Verificar comuna pertenece a región
-            $sqlCheck = "SELECT 1 FROM ajax.comunas WHERE id = $1 AND region_id = $2";
-            $resultCheck = pg_query_params($conn, $sqlCheck, [$comunaId, $regionId]);
-            if (pg_num_rows($resultCheck) == 0) {
-                throw new Exception("La comuna no pertenece a la región seleccionada");
-            }
-
-            // Validar duplicados
-            $sqlDup = "SELECT id FROM ajax.personas WHERE LOWER(nombre) = LOWER($1) AND LOWER(apellidos) = LOWER($2)";
-            $paramsDup = [$nombre, $apellidos];
-            if ($id) {
-                $sqlDup .= " AND id != $3";
-                $paramsDup[] = $id;
-            }
-            $dupResult = pg_query_params($conn, $sqlDup, $paramsDup);
-            if (pg_num_rows($dupResult) > 0) {
-                throw new Exception("Ya existe una persona con ese nombre y apellidos.");
-            }
-
-            if ($id) {
-                $sql = "UPDATE ajax.personas SET nombre=$1, apellidos=$2, region_id=$3, comuna_id=$4, profesion_id=$5, fecha_actualizacion=NOW()
-                        WHERE id=$6 RETURNING id";
-                $params = [$nombre, $apellidos, $regionId, $comunaId, $profesionId, $id];
-            } else {
-                $sql = "INSERT INTO ajax.personas (nombre, apellidos, region_id, comuna_id, profesion_id)
-                        VALUES ($1, $2, $3, $4, $5) RETURNING id";
-                $params = [$nombre, $apellidos, $regionId, $comunaId, $profesionId];
-            }
-
-            $result = pg_query_params($conn, $sql, $params);
-            if (!$result) throw new Exception(pg_last_error($conn));
-            $row = pg_fetch_assoc($result);
-
-            echo json_encode(['success' => true, 'id' => $row['id']]);
-            break;
-            // obtener regiones
-case 'get_regiones':
-    $res = pg_query($conn, "SELECT id, nombre FROM ajax.regiones ORDER BY nombre");
-    echo json_encode(pg_fetch_all($res));
-    break;
-
-// obtener comunas por region
-case 'get_comunas':
-    $regionId = $_GET['region_id'] ?? 0;
-    $res = pg_query_params($conn, "SELECT id, nombre FROM ajax.comunas WHERE region_id = $1 ORDER BY nombre", [$regionId]);
-    echo json_encode(pg_fetch_all($res));
-    break;
-
-// obtener profesiones
-case 'get_profesiones':
-    $res = pg_query($conn, "SELECT id, nombre FROM ajax.profesiones ORDER BY nombre");
-    echo json_encode(pg_fetch_all($res));
-    break;
-
-// obtener personas
-case 'get_personas':
-    $sql = "SELECT p.id, p.nombre, p.apellidos, r.nombre as region, c.nombre as comuna, pr.nombre as profesion 
-            FROM ajax.personas p
-            JOIN ajax.regiones r ON r.id = p.region_id
-            JOIN ajax.comunas c ON c.id = p.comuna_id
-            JOIN ajax.profesiones pr ON pr.id = p.profesion_id
-            ORDER BY p.apellidos, p.nombre";
-    $res = pg_query($conn, $sql);
-    echo json_encode(pg_fetch_all($res));
-    break;
-
-// obtener persona por ID
-case 'get_persona':
-    $id = $_GET['id'] ?? 0;
-    $res = pg_query_params($conn, "SELECT * FROM ajax.personas WHERE id = $1", [$id]);
-    echo json_encode(pg_fetch_assoc($res));
-    break;
-
-// verificar duplicado
-case 'verificar_duplicado':
-    $nombre = $_POST['nombre'] ?? '';
-    $apellidos = $_POST['apellidos'] ?? '';
-    $id = $_POST['id'] ?? null;
-
-    $sql = "SELECT 1 FROM ajax.personas WHERE LOWER(nombre) = LOWER($1) AND LOWER(apellidos) = LOWER($2)";
-    $params = [$nombre, $apellidos];
-
-    if ($id) {
-        $sql .= " AND id != $3";
-        $params[] = $id;
-    }
-
-    $res = pg_query_params($conn, $sql, $params);
-    echo json_encode(['duplicado' => pg_num_rows($res) > 0]);
-    break;
-
-
-        default:
-            throw new Exception("Comando no reconocido");
-    }
-} catch (Exception $e) {
-    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+switch ($cmd) {
+    case 'obtener_ciudades':
+        $result = pg_query($conexion, "SELECT * FROM ciudad");
+        $ciudades = array();
+        while ($row = pg_fetch_assoc($result)) {
+            $ciudades[] = $row;
+        }
+        echo json_encode($ciudades);
+        break;
+        
+    case 'obtener_horarios':
+        $result = pg_query($conexion, "SELECT * FROM horario");
+        $horarios = array();
+        while ($row = pg_fetch_assoc($result)) {
+            $horarios[] = $row;
+        }
+        echo json_encode($horarios);
+        break;
+        
+    case 'obtener_comunas':
+        $idciudad = $_POST['idciudad'];
+        $result = pg_query($conexion, "SELECT * FROM comuna WHERE idciudad = $idciudad");
+        $comunas = array();
+        while ($row = pg_fetch_assoc($result)) {
+            $comunas[] = $row;
+        }
+        echo json_encode($comunas);
+        break;
+        
+    case 'insertar_reserva':
+        $nombre = pg_escape_string($_POST['nombre']);
+        $email = pg_escape_string($_POST['email']);
+        $idciudad = $_POST['idciudad'];
+        $idcomuna = $_POST['idcomuna'];
+        $idhorario = $_POST['idhorario'];
+        $fecha = pg_escape_string($_POST['fecha']);
+        $recordar = $_POST['recordar'] ? 'true' : 'false';
+        
+        $query = "INSERT INTO reserva (nombre, email, idciudad, idcomuna, idhorario, fecha, recordar) 
+                 VALUES ('$nombre', '$email', $idciudad, $idcomuna, $idhorario, '$fecha', $recordar)";
+        
+        if (pg_query($conexion, $query)) {
+            echo json_encode(array('success' => true));
+        } else {
+            echo json_encode(array('error' => pg_last_error()));
+        }
+        break;
+        
+    case 'obtener_reservas':
+        $result = pg_query($conexion, "SELECT r.*, c.nombre as ciudad, co.nombre as comuna, h.hora as horario 
+                                      FROM reserva r
+                                      JOIN ciudad c ON r.idciudad = c.id
+                                      JOIN comuna co ON r.idcomuna = co.id
+                                      JOIN horario h ON r.idhorario = h.id");
+        $reservas = array();
+        while ($row = pg_fetch_assoc($result)) {
+            $reservas[] = $row;
+        }
+        echo json_encode($reservas);
+        break;
+        
+    case 'obtener_porcentajes':
+        $result = pg_query($conexion, "SELECT h.hora, COUNT(*) as cantidad, 
+                                      (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM reserva)) as porcentaje
+                                      FROM reserva r
+                                      JOIN horario h ON r.idhorario = h.id
+                                      GROUP BY h.hora
+                                      ORDER BY cantidad DESC");
+        $porcentajes = array();
+        while ($row = pg_fetch_assoc($result)) {
+            $porcentajes[] = $row;
+        }
+        echo json_encode($porcentajes);
+        break;
+        
+    case 'eliminar_reserva':
+        $idreserva = $_POST['idreserva'];
+        $query = "DELETE FROM reserva WHERE id = $idreserva";
+        if (pg_query($conexion, $query)) {
+            echo json_encode(array('success' => true));
+        } else {
+            echo json_encode(array('error' => pg_last_error()));
+        }
+        break;
+        
+    case 'obtener_reserva':
+        $idreserva = $_POST['idreserva'];
+        $result = pg_query($conexion, "SELECT * FROM reserva WHERE id = $idreserva");
+        $reserva = pg_fetch_assoc($result);
+        echo json_encode($reserva);
+        break;
+        
+    default:
+        echo json_encode(array('error' => 'Comando no reconocido'));
+        break;
 }
 ?>
