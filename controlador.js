@@ -56,24 +56,20 @@ function cargarRegistros() {
 }
 
 function guardarRegistro() {
-    const data = {
-        id: editId,
-        nombre: document.getElementById("nombre_carrera").value.trim(),
-        descripcion: document.getElementById("descripcion").value.trim(),
-        tiempo: document.getElementById("tiempo_carrera").value.trim(),
-        atleta: document.getElementById("atleta").value,
-        avance: document.getElementById("avance").value.trim(),
-        cmd: editId ? "editar" : "insertar"
-    };
-
-    const error = validarCampos(data);
-    if (error) {
-        return alert(error);
+    const formData = new FormData();
+    formData.append('cmd', editId ? 'editar' : 'insertar');
+    formData.append('nombre', document.getElementById("nombre_carrera").value.trim());
+    formData.append('descripcion', document.getElementById("descripcion").value.trim());
+    formData.append('tiempo', document.getElementById("tiempo_carrera").value.trim());
+    formData.append('atleta', document.getElementById("atleta").value);
+    formData.append('avance', document.getElementById("avance").value.trim());
+    
+    if (editId) {
+        formData.append('id', editId);
     }
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "command.php", true);
-    xhr.setRequestHeader("Content-Type", "application/json");
 
     xhr.onload = function () {
         if (xhr.status === 200) {
@@ -91,16 +87,18 @@ function guardarRegistro() {
         }
     };
 
-    // Se manda el objeto JSON con los datos del formulario
-    xhr.send(JSON.stringify(data));
+    xhr.send(formData);
 }
 
 function eliminar(id) {
     if (!confirm("¿Está seguro que desea eliminar este registro?")) return;
 
+    const formData = new FormData();
+    formData.append('cmd', 'eliminar');
+    formData.append('id', id);
+
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "command.php", true);
-    xhr.setRequestHeader("Content-Type", "application/json");
 
     xhr.onload = function () {
         if (xhr.status === 200) {
@@ -118,10 +116,8 @@ function eliminar(id) {
         }
     };
     
-    // Se manda un objeto JSON con el comando y el ID
-    xhr.send(JSON.stringify({ cmd: "eliminar", id: id }));
+    xhr.send(formData);
 }
-
 
 function editar(datos) {
     document.getElementById("nombre_carrera").value = datos.nombre;
@@ -130,7 +126,6 @@ function editar(datos) {
     document.getElementById("atleta").value = datos.atleta_id;
     document.getElementById("avance").value = datos.avance;
     editId = datos.id;
-    // Cambia el texto del botón para indicar que se está editando
     document.getElementById("guardarBtn").textContent = "Actualizar";
     window.scrollTo(0, 0); 
 }
