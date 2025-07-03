@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function cargarAtletas() {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", "command.php?cmd=atletas", true);
-    xhr.onload = function () {
+    xhr.onload = function() {
         if (xhr.status === 200) {
             const data = JSON.parse(xhr.responseText);
             const select = document.getElementById("atleta");
@@ -29,7 +29,7 @@ function cargarAtletas() {
 function cargarRegistros() {
     const xhr = new XMLHttpRequest();
     xhr.open("GET", "command.php?cmd=listar", true);
-    xhr.onload = function () {
+    xhr.onload = function() {
         if (xhr.status === 200) {
             const data = JSON.parse(xhr.responseText);
             const tabla = document.getElementById("tablaCarreras");
@@ -56,22 +56,36 @@ function cargarRegistros() {
 }
 
 function guardarRegistro() {
-    const formData = new FormData();
-    formData.append('cmd', editId ? 'editar' : 'insertar');
-    formData.append('nombre', document.getElementById("nombre_carrera").value.trim());
-    formData.append('descripcion', document.getElementById("descripcion").value.trim());
-    formData.append('tiempo', document.getElementById("tiempo_carrera").value.trim());
-    formData.append('atleta', document.getElementById("atleta").value);
-    formData.append('avance', document.getElementById("avance").value.trim());
+    const params = new URLSearchParams();
+    params.append('cmd', editId ? "editar" : "insertar");
+    params.append('nombre', document.getElementById("nombre_carrera").value.trim());
+    params.append('descripcion', document.getElementById("descripcion").value.trim());
+    params.append('tiempo', document.getElementById("tiempo_carrera").value.trim());
+    params.append('atleta', document.getElementById("atleta").value);
+    params.append('avance', document.getElementById("avance").value.trim());
     
     if (editId) {
-        formData.append('id', editId);
+        params.append('id', editId);
+    }
+
+    // Convertir a objeto para validación
+    const data = {
+        nombre: params.get('nombre'),
+        descripcion: params.get('descripcion'),
+        tiempo: params.get('tiempo'),
+        atleta: params.get('atleta'),
+        avance: params.get('avance')
+    };
+
+    const error = validarCampos(data);
+    if (error) {
+        return alert(error);
     }
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "command.php", true);
+    xhr.open("GET", `command.php?${params.toString()}`, true);
 
-    xhr.onload = function () {
+    xhr.onload = function() {
         if (xhr.status === 200) {
             try {
                 const resp = JSON.parse(xhr.responseText);
@@ -86,21 +100,16 @@ function guardarRegistro() {
             }
         }
     };
-
-    xhr.send(formData);
+    xhr.send();
 }
 
 function eliminar(id) {
     if (!confirm("¿Está seguro que desea eliminar este registro?")) return;
 
-    const formData = new FormData();
-    formData.append('cmd', 'eliminar');
-    formData.append('id', id);
-
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "command.php", true);
+    xhr.open("GET", `command.php?cmd=eliminar&id=${id}`, true);
 
-    xhr.onload = function () {
+    xhr.onload = function() {
         if (xhr.status === 200) {
             try {
                 const resp = JSON.parse(xhr.responseText);
@@ -115,8 +124,7 @@ function eliminar(id) {
             }
         }
     };
-    
-    xhr.send(formData);
+    xhr.send();
 }
 
 function editar(datos) {
@@ -127,11 +135,20 @@ function editar(datos) {
     document.getElementById("avance").value = datos.avance;
     editId = datos.id;
     document.getElementById("guardarBtn").textContent = "Actualizar";
-    window.scrollTo(0, 0); 
+    window.scrollTo(0, 0);
 }
 
 function limpiarFormulario() {
     document.getElementById("marathonForm").reset();
     editId = null;
     document.getElementById("guardarBtn").textContent = "Guardar";
+}
+
+function validarCampos(data) {
+    if (!data.nombre) return "El nombre de la carrera es requerido";
+    if (!data.tiempo) return "El tiempo estimado es requerido";
+    if (!data.atleta) return "Debe seleccionar un atleta";
+    if (!data.avance || isNaN(data.avance)) return "El avance debe ser un número";
+    if (data.avance < 0 || data.avance > 100) return "El avance debe estar entre 0 y 100";
+    return null;
 }
