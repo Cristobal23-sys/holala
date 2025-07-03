@@ -1,6 +1,4 @@
 <?php
-
-use Dba\Connection;
 header("Content-Type: application/json");
 require_once 'conexion.php';
 

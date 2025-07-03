@@ -9,7 +9,7 @@ let editId = null;
 
 function cargarAtletas() {
     const xhr = new XMLHttpRequest();
-    xhr.open("GET", "command.php?accion=atletas", true);
+    xhr.open("GET", "command.php?cmd=atletas", true);  // ← Cambiado
     xhr.onload = function () {
         if (xhr.status === 200) {
             const data = JSON.parse(xhr.responseText);
@@ -32,7 +32,8 @@ function guardarRegistro() {
         descripcion: document.getElementById("descripcion").value.trim(),
         tiempo: document.getElementById("tiempo_carrera").value.trim(),
         atleta: document.getElementById("atleta").value,
-        avance: document.getElementById("avance").value.trim()
+        avance: document.getElementById("avance").value.trim(),
+        cmd: editId ? "editar" : "insertar"  // ← Cambiado
     };
 
     const error = validarCampos(data);
@@ -44,22 +45,26 @@ function guardarRegistro() {
 
     xhr.onload = function () {
         if (xhr.status === 200) {
-            const resp = JSON.parse(xhr.responseText);
-            alert(resp.mensaje);
-            if (resp.exito) {
-                limpiarFormulario();
-                cargarRegistros();
+            try {
+                const resp = JSON.parse(xhr.responseText);
+                alert(resp.mensaje);
+                if (resp.exito) {
+                    limpiarFormulario();
+                    cargarRegistros();
+                }
+            } catch (e) {
+                console.error("Respuesta inválida:", xhr.responseText);
+                alert("Error al procesar respuesta del servidor.");
             }
         }
     };
 
-    data.accion = editId ? "editar" : "insertar";
     xhr.send(JSON.stringify(data));
 }
 
 function cargarRegistros() {
     const xhr = new XMLHttpRequest();
-    xhr.open("GET", "command.php?accion=listar", true);
+    xhr.open("GET", "command.php?cmd=listar", true);  // ← Cambiado
     xhr.onload = function () {
         if (xhr.status === 200) {
             const data = JSON.parse(xhr.responseText);
@@ -104,16 +109,21 @@ function eliminar(id) {
 
     xhr.onload = function () {
         if (xhr.status === 200) {
-            const resp = JSON.parse(xhr.responseText);
-            alert(resp.mensaje);
-            if (resp.exito) {
-                limpiarFormulario();
-                cargarRegistros();
+            try {
+                const resp = JSON.parse(xhr.responseText);
+                alert(resp.mensaje);
+                if (resp.exito) {
+                    limpiarFormulario();
+                    cargarRegistros();
+                }
+            } catch (e) {
+                console.error("Respuesta inválida:", xhr.responseText);
+                alert("Error al procesar respuesta del servidor.");
             }
         }
     };
 
-    xhr.send(JSON.stringify({ accion: "eliminar", id }));
+    xhr.send(JSON.stringify({ cmd: "eliminar", id }));  // ← Cambiado
 }
 
 function limpiarFormulario() {
