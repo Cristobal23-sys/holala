@@ -3,12 +3,27 @@
 header("Content-Type: application/json");
 require_once 'conexion.php';
 
-// Decodifica el cuerpo de la solicitud JSON enviada por POST
-$data = json_decode(file_get_contents("php://input"), true);
+// CAMBIO CLAVE: Se determina el comando y los datos según el tipo de petición.
+$cmd = '';
+$data = [];
 
-// Determina el comando a ejecutar (leyendo desde GET o desde el cuerpo del POST)
-$cmd = isset($_GET['cmd']) ? $_GET['cmd'] : (isset($data['cmd']) ? $data['cmd'] : '');
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Si es POST, lee los datos del cuerpo de la solicitud.
+    $data = json_decode(file_get_contents("php://input"), true);
+    // Asegurarse de que $data sea un array para evitar errores.
+    if (!is_array($data)) {
+        $data = [];
+    }
+    $cmd = $data['cmd'] ?? ''; // Obtiene el comando de los datos POST.
+} elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['cmd'])) {
+    // Si es GET, solo toma el comando de la URL.
+    $cmd = $_GET['cmd'];
+}
+// FIN DEL CAMBIO
 
+// El resto del script (el 'switch') permanece exactamente igual.
+// Ahora funcionará porque $cmd se establece correctamente para GET y POST,
+// y $data se puebla solo cuando es necesario (en las peticiones POST).
 switch ($cmd) {
     case "insertar":
         // Se accede a los datos a través del array $data
@@ -53,5 +68,4 @@ switch ($cmd) {
         }
         echo json_encode($datos);
         break;
-
 }
