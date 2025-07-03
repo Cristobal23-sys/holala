@@ -8,26 +8,35 @@
 <body>
     <div class="container">
         <h1>Registro de Maratones</h1>
-        <form id="marathonForm">
-            <label>Nombre Carrera</label>
-            <input type="text" id="nombre_carrera" oninput="this.value = this.value.toUpperCase();">
-
-            <label>Descripción</label>
-            <textarea id="descripcion"></textarea>
-
-            <label>Tiempo Carrera</label>
-            <input type="text" id="tiempo_carrera">
-
-            <label>Atleta</label>
-            <select id="atleta">
-                <option value="">--Seleccione--</option>
-            </select>
-
-            <label>Porcentaje de Avance</label>
-            <input type="text" id="avance">
-
-            <button type="button" id="guardarBtn">Guardar</button>
-        </form>
+        <div id="marathonForm" class="form-container">
+            <table>
+                <tr>
+                    <td><label for="nombre_carrera">Nombre Carrera:</label></td>
+                    <td><input type="text" id="nombre_carrera" oninput="this.value = this.value.toUpperCase();"></td>
+                    <td><label for="tiempo_carrera">Tiempo Carrera:</label></td>
+                    <td><input type="text" id="tiempo_carrera"></td>
+                </tr>
+                <tr>
+                    <td><label for="descripcion">Descripción:</label></td>
+                    <td colspan="3"><textarea id="descripcion"></textarea></td>
+                </tr>
+                <tr>
+                    <td><label for="atleta">Atleta:</label></td>
+                    <td>
+                        <select id="atleta">
+                            <option value="">--Seleccione--</option>
+                            </select>
+                    </td>
+                    <td><label for="avance">Porcentaje de Avance:</label></td>
+                    <td><input type="text" id="avance"></td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="text-align: center;">
+                        <button type="button" id="guardarBtn">Guardar</button>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
         <h2>Listado de Carreras</h2>
         <table>
@@ -42,8 +51,7 @@
                 </tr>
             </thead>
             <tbody id="tablaCarreras">
-                <!-- Se llenará dinámicamente -->
-            </tbody>
+                </tbody>
         </table>
     </div>
 
