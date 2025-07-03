@@ -1,109 +1,53 @@
 <?php
-include 'Conexion.php';
 
-header('Content-Type: application/json');
+use Dba\Connection;
+header("Content-Type: application/json");
+require_once 'conexion.php';
 
-try {
-    $cmd = $_GET['cmd'] ?? '';
-    
-    switch ($cmd) {
-        // Obtener ciudades
-        case 'obtener_ciudades':
-            $result = pg_query($conexion, "SELECT id, nombre FROM ciudad ORDER BY nombre");
-            if (!$result) throw new Exception(pg_last_error($conexion));
-            echo json_encode(pg_fetch_all($result) ?: []);
-            break;
-            
-        // Obtener horarios
-        case 'obtener_horarios':
-            $result = pg_query($conexion, "SELECT id, hora FROM horario ORDER BY hora");
-            if (!$result) throw new Exception(pg_last_error($conexion));
-            echo json_encode(pg_fetch_all($result) ?: []);
-            break;
-            
-        // Obtener comunas por ciudad
-        case 'obtener_comunas':
-            $idciudad = $_GET['idciudad'] ?? 0;
-            $result = pg_query_params($conexion, 
-                "SELECT id, nombre FROM comuna WHERE idciudad = $1 ORDER BY nombre", 
-                [$idciudad]);
-            if (!$result) throw new Exception(pg_last_error($conexion));
-            echo json_encode(pg_fetch_all($result) ?: []);
-            break;
-            
-        // Insertar reserva (ahora con GET)
-        case 'insertar_reserva':
-            $params = [
-                'nombre' => $_GET['nombre'] ?? '',
-                'email' => $_GET['email'] ?? '',
-                'idciudad' => $_GET['idciudad'] ?? 0,
-                'idcomuna' => $_GET['idcomuna'] ?? 0,
-                'idhorario' => $_GET['idhorario'] ?? 0,
-                'fecha' => $_GET['fecha'] ?? '',
-                'recordar' => $_GET['recordar'] ?? false
-            ];
-            
-            $result = pg_query_params($conexion,
-                "INSERT INTO reserva (nombre, email, idciudad, idcomuna, idhorario, fecha, recordar) 
-                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
-                array_values($params));
-                
-            if (!$result) throw new Exception(pg_last_error($conexion));
-            echo json_encode(['success' => true, 'id' => pg_fetch_result($result, 0, 0)]);
-            break;
-            
-        // Obtener todas las reservas
-        case 'obtener_reservas':
-            $result = pg_query($conexion,
-                "SELECT r.id, r.nombre, r.email, r.fecha, r.recordar,
-                        c.nombre as ciudad, co.nombre as comuna, h.hora as horario
-                 FROM reserva r
-                 JOIN ciudad c ON r.idciudad = c.id
-                 JOIN comuna co ON r.idcomuna = co.id
-                 JOIN horario h ON r.idhorario = h.id
-                 ORDER BY r.fecha DESC");
-            if (!$result) throw new Exception(pg_last_error($conexion));
-            echo json_encode(pg_fetch_all($result) ?: []);
-            break;
-            
-        // Obtener estadísticas de horarios
-        case 'obtener_porcentajes':
-            $result = pg_query($conexion,
-                "SELECT h.hora, COUNT(*) as cantidad,
-                        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM reserva), 2) as porcentaje
-                 FROM reserva r
-                 JOIN horario h ON r.idhorario = h.id
-                 GROUP BY h.hora
-                 ORDER BY cantidad DESC");
-            if (!$result) throw new Exception(pg_last_error($conexion));
-            echo json_encode(pg_fetch_all($result) ?: []);
-            break;
-            
-        // Eliminar reserva
-        case 'eliminar_reserva':
-            $idreserva = $_GET['idreserva'] ?? 0;
-            $result = pg_query_params($conexion,
-                "DELETE FROM reserva WHERE id = $1",
-                [$idreserva]);
-            if (!$result) throw new Exception(pg_last_error($conexion));
-            echo json_encode(['success' => pg_affected_rows($result) > 0]);
-            break;
-            
-        // Obtener datos de una reserva específica
-        case 'obtener_reserva':
-            $idreserva = $_GET['idreserva'] ?? 0;
-            $result = pg_query_params($conexion,
-                "SELECT * FROM reserva WHERE id = $1",
-                [$idreserva]);
-            if (!$result) throw new Exception(pg_last_error($conexion));
-            echo json_encode(pg_fetch_assoc($result) ?: []);
-            break;
-            
-        default:
-            echo json_encode(['error' => 'Comando no reconocido']);
-    }
-} catch (Exception $e) {
-    echo json_encode(['error' => $e->getMessage()]);
+$data = json_decode(file_get_contents("php://input"), true);
+$accion = $_GET['accion'] ?? $data['accion'];
+
+switch ($accion) {
+    case "insertar":
+        extract($data);
+        $res = pg_query_params($conn, "SELECT COUNT(*) FROM carreras WHERE nombre=$1 AND atleta_id=$2", [$nombre, $atleta]);
+        if (pg_fetch_result($res, 0, 0) > 0)
+            exit(json_encode(["exito" => false, "mensaje" => "Este atleta ya está registrado en esta carrera."]));
+
+        $q = pg_query_params($conn, "INSERT INTO carreras(nombre, descripcion, tiempo, atleta_id, avance) VALUES ($1, $2, $3, $4, $5)", [$nombre, $descripcion, $tiempo, $atleta, $avance]);
+        echo json_encode(["exito" => $q, "mensaje" => $q ? "Registro guardado exitosamente." : "Error al guardar."]);
+        break;
+
+    case "editar":
+        extract($data);
+        $res = pg_query_params($conn, "SELECT COUNT(*) FROM carreras WHERE nombre=$1 AND atleta_id=$2 AND id<>$3", [$nombre, $atleta, $id]);
+        if (pg_fetch_result($res, 0, 0) > 0)
+            exit(json_encode(["exito" => false, "mensaje" => "Este atleta ya está registrado en esta carrera."]));
+
+        $q = pg_query_params($conn, "UPDATE carreras SET nombre=$1, descripcion=$2, tiempo=$3, atleta_id=$4, avance=$5 WHERE id=$6", [$nombre, $descripcion, $tiempo, $atleta, $avance, $id]);
+        echo json_encode(["exito" => $q, "mensaje" => $q ? "Registro actualizado exitosamente." : "Error al actualizar."]);
+        break;
+
+    case "eliminar":
+        $q = pg_query_params($conn, "DELETE FROM carreras WHERE id=$1", [$data['id']]);
+        echo json_encode(["exito" => $q, "mensaje" => $q ? "Registro eliminado correctamente." : "Error al eliminar."]);
+        break;
+
+    case "listar":
+        $res = pg_query($conn, "SELECT c.id, c.nombre, c.descripcion, c.tiempo, c.avance, c.fecha_registro as comienzo, a.nombre as atleta, a.id as atleta_id FROM carreras c JOIN atletas a ON a.id = c.atleta_id ORDER BY c.id DESC");
+        $datos = [];
+        while ($r = pg_fetch_assoc($res)) {
+            $datos[] = $r;
+        }
+        echo json_encode($datos);
+        break;
+
+    case "atletas":
+        $res = pg_query($conn, "SELECT id, nombre FROM atletas ORDER BY nombre");
+        $datos = [];
+        while ($r = pg_fetch_assoc($res)) {
+            $datos[] = $r;
+        }
+        echo json_encode($datos);
+        break;
 }
-?>
-

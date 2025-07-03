@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Registro de Maratones</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Registro de Maratones</h1>
+        <form id="marathonForm">
+            <label>Nombre Carrera</label>
+            <input type="text" id="nombre_carrera" oninput="this.value = this.value.toUpperCase();">
+
+            <label>Descripción</label>
+            <textarea id="descripcion"></textarea>
+
+            <label>Tiempo Carrera</label>
+            <input type="text" id="tiempo_carrera">
+
+            <label>Atleta</label>
+            <select id="atleta">
+                <option value="">--Seleccione--</option>
+            </select>
+
+            <label>Porcentaje de Avance</label>
+            <input type="text" id="avance">
+
+            <button type="button" id="guardarBtn">Guardar</button>
+        </form>
+
+        <h2>Listado de Carreras</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Carrera</th>
+                    <th>Tiempo</th>
+                    <th>Atleta</th>
+                    <th>Comienzo</th>
+                    <th>Avance</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="tablaCarreras">
+                <!-- Se llenará dinámicamente -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="util.js"></script>
+    <script src="controlador.js"></script>
+</body>
+</html>
