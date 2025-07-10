@@ -1,5 +1,37 @@
-<!-- Botones para distintos tipos de messagebox -->
-<div style="display: flex; flex-direction: column; gap: 10px;">
+<?php
+    /* OBTENEMOS LA POSICIÓN DE LA RAÍZ */
+    while (!file_exists($POSICION . "conexion.php")) {
+        $POSICION .= "../";
+    }
+    require($POSICION . "formHeader.php");
+?>
+
+<!-- IMPORTA EL COMPONENTE MESSAGEBOX -->
+<script type="text/javascript" src="<?= $POSICION ?>componente/messagebox/class.php?v=1"></script>
+
+<style>
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.titulorojomsgbox {
+    background-color: red;
+    color: white;
+}
+
+.titulonaranjamsgbox {
+    background-color: orange;
+    color: black;
+}
+</style>
+
+<!-- ESTRUCTURA HTML -->
+<div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
     <button onclick="mostrarMSGBOX('Aceptar')" style="width:300px;">Mostrar solo Aceptar</button>
     <button onclick="mostrarMSGBOX('AceptarCancelar')" style="width:300px;">Mostrar Aceptar/Cancelar</button>
     <button onclick="mostrarMSGBOX('SiNo')" style="width:300px;">Mostrar Sí/No</button>
@@ -7,7 +39,6 @@
     <button onclick="mostrarMSGBOX('ImprimirCancelar')" style="width:300px;">Mostrar Imprimir/Cancelar</button>
     <button onclick="mostrarMSGBOX('AceptarCancelarAnular')" style="width:300px;">Mostrar Aceptar/Cancelar/Anular</button>
 
-    <!-- Select de monedas -->
     <select id="selectMoneda" onchange="seleccionarMoneda()" style="margin-top:20px;width:300px;">
         <option value="">Seleccione una moneda</option>
         <option value="EURO">EURO</option>
@@ -17,64 +48,90 @@
     </select>
 </div>
 
+<!-- SCRIPT -->
 <script type="text/javascript">
+    // Declaración global
+    var MSGBOX;
 
-const BOTONERAS = {
-    Aceptar: 1,
-    AceptarCancelar: 2,
-    SiNo: 3,
-    SiNoCancelar: 4,
-    ImprimirCancelar: 5,
-    AceptarCancelarAnular: 6
-};
-
-function mostrarMSGBOX(tipo) {
-    MSGBOX.Abrir({
-        titulo: 'Mensaje tipo: ' + tipo,
-        texto: 'Este es un messagebox con botonera: ' + tipo,
-        fnretorno: 'respuestaBasica',
-        botonera: BOTONERAS[tipo]
+    // Esperar que todo cargue
+    document.addEventListener("DOMContentLoaded", function () {
+        // Inicializar MSGBOX
+        MSGBOX = {
+            ventana: typeof IU_MSGBOX,
+            initialize: function () {
+                this.ventana = new IU_MSGBOX();
+            },
+            Abrir: function (conf) {
+                this.ventana.titulocss = conf.titulocss || '';
+                this.ventana.titulo = conf.titulo;
+                var texto = conf.texto || '';
+                this.ventana.texto = '<center>' + texto + '</center>';
+                this.ventana.botonera = conf.botonera || 3;
+                this.ventana.conCerrar = (conf.conCerrar !== undefined) ? conf.conCerrar : this.ventana.conCerrar;
+                this.ventana.fnretorno = conf.fnretorno || 'respuestaBasica';
+                this.ventana.url = '<?= $POSICION ?>';
+                this.ventana.top = conf.top || '25%';
+                this.ventana.objeto = conf.objeto || {};
+                this.ventana.Messagebox();
+                this.ventana.zzIndex = 2;
+            },
+        };
+        MSGBOX.initialize();
     });
-}
 
-function respuestaBasica(resp) {
-    alert("Botón presionado: " + resp);
-    MSGBOX.ventana.HideInfo();
-}
+    const BOTONERAS = {
+        Aceptar: 1,
+        AceptarCancelar: 2,
+        SiNo: 3,
+        SiNoCancelar: 4,
+        ImprimirCancelar: 5,
+        AceptarCancelarAnular: 6
+    };
 
-function seleccionarMoneda() {
-    const moneda = document.getElementById("selectMoneda").value;
-    if (moneda === "") return;
-
-    MSGBOX.ventana.titulocss = 'titulorojomsgbox';
-
-    MSGBOX.Abrir({
-        titulo: 'Moneda',
-        texto: '¿Desea mostrar el tipo de moneda escogido?',
-        fnretorno: 'respuestaMoneda',
-        botonera: 3, // Sí/No
-        objeto: { moneda }
-    });
-}
-
-function respuestaMoneda(resp) {
-    if (resp === 'S') {
-        const monedaEscogida = MSGBOX.ventana.objeto.moneda;
-        MSGBOX.ventana.titulocss = 'titulonaranjamsgbox';
-
+    function mostrarMSGBOX(tipo) {
         MSGBOX.Abrir({
-            titulo: 'Moneda',
-            texto: 'La moneda escogida es ' + monedaEscogida,
-            fnretorno: 'cerrarMSG',
-            botonera: 1 // Aceptar
+            titulo: 'Mensaje tipo: ' + tipo,
+            texto: 'Este es un messagebox con botonera: ' + tipo,
+            fnretorno: 'respuestaBasica',
+            botonera: BOTONERAS[tipo]
         });
-    } else {
+    }
+
+    function respuestaBasica(resp) {
+        alert("Botón presionado: " + resp);
         MSGBOX.ventana.HideInfo();
     }
-}
 
-function cerrarMSG() {
-    MSGBOX.ventana.HideInfo();
-}
+    function seleccionarMoneda() {
+        const moneda = document.getElementById("selectMoneda").value;
+        if (moneda === "") return;
 
+        MSGBOX.Abrir({
+            titulocss: 'titulorojomsgbox',
+            titulo: 'Moneda',
+            texto: '¿Desea mostrar el tipo de moneda escogido?',
+            fnretorno: 'respuestaMoneda',
+            botonera: 3, // Sí / No
+            objeto: { moneda: moneda }
+        });
+    }
+
+    function respuestaMoneda(resp) {
+        if (resp === 'S') {
+            const moneda = MSGBOX.ventana.objeto.moneda;
+            MSGBOX.Abrir({
+                titulocss: 'titulonaranjamsgbox',
+                titulo: 'Moneda',
+                texto: 'La moneda escogida es ' + moneda,
+                fnretorno: 'cerrarMSG',
+                botonera: 1 // Aceptar
+            });
+        } else {
+            MSGBOX.ventana.HideInfo();
+        }
+    }
+
+    function cerrarMSG() {
+        MSGBOX.ventana.HideInfo();
+    }
 </script>
