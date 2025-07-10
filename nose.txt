@@ -1,8 +1,26 @@
+case "obtenercomunas":
+    $idregion = intval($_GET["idregion"]); // segura conversión a número entero
+    $query = "SELECT idcomuna, comuna FROM carrocompra.comuna WHERE idregion = $idregion ORDER BY comuna";
+    break;
+
+
+
+
+-------------
+<select id="comboRegion"></select>
+<select id="comboComuna"></select>
+
+
+
+
+-
+
+
 let BD = new BASE();
 BD.commandFile = "form/training/database/ejercicio2/command.php";
 
-// Llenar el combo de regiones
-let resultado = BD.send("cmd=obtieneProducto");
+// 1. Llenar comboRegion al inicio
+let resultado = BD.send("cmd=obtenerdatos");
 
 let comboRegion = document.getElementById("comboRegion");
 comboRegion.innerText = null;
@@ -13,7 +31,7 @@ defaultRegion.value = "";
 defaultRegion.text = "-- Seleccione una región --";
 comboRegion.add(defaultRegion);
 
-// Llenar regiones
+// Agregar opciones de regiones
 for (let i = 0; i < resultado.numrows; i++) {
   let option = document.createElement("option");
   option.value = BD.getField(resultado, "idregion", i);
@@ -21,20 +39,21 @@ for (let i = 0; i < resultado.numrows; i++) {
   comboRegion.add(option);
 }
 
-// Evento: al seleccionar una región, cargar comunas
+// 2. Escuchar cambios en comboRegion y cargar comboComuna
 comboRegion.addEventListener("change", function () {
   let idregion = this.value;
   let comboComuna = document.getElementById("comboComuna");
   comboComuna.innerText = null;
 
-  // Agrega opción por defecto
+  // Opción por defecto para comuna
   let defaultComuna = document.createElement("option");
   defaultComuna.value = "";
   defaultComuna.text = "-- Seleccione una comuna --";
   comboComuna.add(defaultComuna);
 
+  // Si seleccionó una región válida, cargar comunas
   if (idregion !== "") {
-    let resultadoComunas = BD.send("cmd=obtieneComunas&idregion=" + idregion);
+    let resultadoComunas = BD.send("cmd=obtenercomunas&idregion=" + idregion);
 
     for (let i = 0; i < resultadoComunas.numrows; i++) {
       let option = document.createElement("option");
