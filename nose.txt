@@ -1,65 +1,80 @@
-case "obtenercomunas":
-    $idregion = intval($_GET["idregion"]); // segura conversión a número entero
-    $query = "SELECT idcomuna, comuna FROM carrocompra.comuna WHERE idregion = $idregion ORDER BY comuna";
-    break;
+<!-- Botones para distintos tipos de messagebox -->
+<div style="display: flex; flex-direction: column; gap: 10px;">
+    <button onclick="mostrarMSGBOX('Aceptar')" style="width:300px;">Mostrar solo Aceptar</button>
+    <button onclick="mostrarMSGBOX('AceptarCancelar')" style="width:300px;">Mostrar Aceptar/Cancelar</button>
+    <button onclick="mostrarMSGBOX('SiNo')" style="width:300px;">Mostrar Sí/No</button>
+    <button onclick="mostrarMSGBOX('SiNoCancelar')" style="width:300px;">Mostrar Sí/No/Cancelar</button>
+    <button onclick="mostrarMSGBOX('ImprimirCancelar')" style="width:300px;">Mostrar Imprimir/Cancelar</button>
+    <button onclick="mostrarMSGBOX('AceptarCancelarAnular')" style="width:300px;">Mostrar Aceptar/Cancelar/Anular</button>
 
+    <!-- Select de monedas -->
+    <select id="selectMoneda" onchange="seleccionarMoneda()" style="margin-top:20px;width:300px;">
+        <option value="">Seleccione una moneda</option>
+        <option value="EURO">EURO</option>
+        <option value="DÓLAR">DÓLAR</option>
+        <option value="PESO">PESO</option>
+        <option value="SOLES">SOLES</option>
+    </select>
+</div>
 
+<script type="text/javascript">
 
+const BOTONERAS = {
+    Aceptar: 1,
+    AceptarCancelar: 2,
+    SiNo: 3,
+    SiNoCancelar: 4,
+    ImprimirCancelar: 5,
+    AceptarCancelarAnular: 6
+};
 
--------------
-<select id="comboRegion"></select>
-<select id="comboComuna"></select>
-
-
-
-
--
-
-
-let BD = new BASE();
-BD.commandFile = "form/training/database/ejercicio2/command.php";
-
-// 1. Llenar comboRegion al inicio
-let resultado = BD.send("cmd=obtenerdatos");
-
-let comboRegion = document.getElementById("comboRegion");
-comboRegion.innerText = null;
-
-// Opción por defecto
-let defaultRegion = document.createElement("option");
-defaultRegion.value = "";
-defaultRegion.text = "-- Seleccione una región --";
-comboRegion.add(defaultRegion);
-
-// Agregar opciones de regiones
-for (let i = 0; i < resultado.numrows; i++) {
-  let option = document.createElement("option");
-  option.value = BD.getField(resultado, "idregion", i);
-  option.text = BD.getField(resultado, "region", i);
-  comboRegion.add(option);
+function mostrarMSGBOX(tipo) {
+    MSGBOX.Abrir({
+        titulo: 'Mensaje tipo: ' + tipo,
+        texto: 'Este es un messagebox con botonera: ' + tipo,
+        fnretorno: 'respuestaBasica',
+        botonera: BOTONERAS[tipo]
+    });
 }
 
-// 2. Escuchar cambios en comboRegion y cargar comboComuna
-comboRegion.addEventListener("change", function () {
-  let idregion = this.value;
-  let comboComuna = document.getElementById("comboComuna");
-  comboComuna.innerText = null;
+function respuestaBasica(resp) {
+    alert("Botón presionado: " + resp);
+    MSGBOX.ventana.HideInfo();
+}
 
-  // Opción por defecto para comuna
-  let defaultComuna = document.createElement("option");
-  defaultComuna.value = "";
-  defaultComuna.text = "-- Seleccione una comuna --";
-  comboComuna.add(defaultComuna);
+function seleccionarMoneda() {
+    const moneda = document.getElementById("selectMoneda").value;
+    if (moneda === "") return;
 
-  // Si seleccionó una región válida, cargar comunas
-  if (idregion !== "") {
-    let resultadoComunas = BD.send("cmd=obtenercomunas&idregion=" + idregion);
+    MSGBOX.ventana.titulocss = 'titulorojomsgbox';
 
-    for (let i = 0; i < resultadoComunas.numrows; i++) {
-      let option = document.createElement("option");
-      option.value = BD.getField(resultadoComunas, "idcomuna", i);
-      option.text = BD.getField(resultadoComunas, "comuna", i);
-      comboComuna.add(option);
+    MSGBOX.Abrir({
+        titulo: 'Moneda',
+        texto: '¿Desea mostrar el tipo de moneda escogido?',
+        fnretorno: 'respuestaMoneda',
+        botonera: 3, // Sí/No
+        objeto: { moneda }
+    });
+}
+
+function respuestaMoneda(resp) {
+    if (resp === 'S') {
+        const monedaEscogida = MSGBOX.ventana.objeto.moneda;
+        MSGBOX.ventana.titulocss = 'titulonaranjamsgbox';
+
+        MSGBOX.Abrir({
+            titulo: 'Moneda',
+            texto: 'La moneda escogida es ' + monedaEscogida,
+            fnretorno: 'cerrarMSG',
+            botonera: 1 // Aceptar
+        });
+    } else {
+        MSGBOX.ventana.HideInfo();
     }
-  }
-});
+}
+
+function cerrarMSG() {
+    MSGBOX.ventana.HideInfo();
+}
+
+</script>
