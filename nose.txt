@@ -1,12 +1,15 @@
+<script type="text/javascript">
 let BD = new BASE();
 BD.commandFile = "form/training/messagebox/ejercicio2/command.php";
 
-// Render tabla
+// Instancia global del MSGBOX
+let MSGBOX = new IU_MSGBOX();
+
+// Función para cargar la tabla al iniciar
 function cargarTabla() {
     var resultado = BD.send("cmd=obtienePersonal");
-    let txt = "";
 
-    txt += `
+    let txt = `
     <table width="80%" border="1px solid #ddd" style="border-collapse:collapse;">
     <thead font-size:25px;">
     <tr style="background-color:#EAEAEA">
@@ -35,25 +38,26 @@ function cargarTabla() {
     document.getElementById("personal").innerHTML = txt;
 }
 
-window.onload = cargarTabla;
-
-// Confirmar eliminación con MSGBOX
+// Función que muestra el MSGBOX de confirmación
 function confirmarEliminacion(id) {
-    let msgbox = new IU_MSGBOX();
-    msgbox.titulo = "Eliminar Registros";
-    msgbox.texto = "<center>¿Está seguro que desea realizar esta acción?</center>";
-    msgbox.botonera = 3; // Sí / No
-    msgbox.fnretorno = "accionEliminar";
-    msgbox.objeto = { idpersona: id };
-    msgbox.Messagebox();
+    MSGBOX.titulo = "Eliminar Registros";
+    MSGBOX.texto = "<center>¿Está seguro que desea realizar esta acción?</center>";
+    MSGBOX.botonera = 3; // Sí / No
+    MSGBOX.fnretorno = "accionEliminar";
+    MSGBOX.objeto = { idpersona: id };
+    MSGBOX.Messagebox();
 }
 
-// Ejecutar eliminación si usuario confirma
-function accionEliminar(respuesta) {
-    if (respuesta === "S") {
-        let id = MSGBOX.ventana.objeto.idpersona;
-        let resp = BD.send(`cmd=eliminarPersonal&idpersona=${id}`);
-        cargarTabla(); // Recargar la tabla luego de eliminar
+// Función que ejecuta la eliminación si se confirma
+function accionEliminar(resp) {
+    if (resp === "S") {
+        let id = MSGBOX.objeto.idpersona;
+        let respuesta = BD.send(`cmd=eliminarPersonal&idpersona=${id}`);
+        cargarTabla(); // Refresca la tabla
     }
-    MSGBOX.ventana.HideInfo();
+    MSGBOX.HideInfo();
 }
+
+// Ejecuta la carga inicial al abrir la página
+window.onload = cargarTabla;
+</script>
