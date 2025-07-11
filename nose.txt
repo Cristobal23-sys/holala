@@ -1,65 +1,27 @@
-//clienteproveedor2
-<div>
-    <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-        <div style="flex: 1;">
-            <label>Razón Social</label>
-            <input type="text" id="razon" style="width: 100%;" />
-        </div>
-        <div style="flex: 1;">
-            <label>Giro</label>
-            <input type="text" id="giro" style="width: 100%;" />
-        </div>
-    </div>
-    <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-        <div style="flex: 1;">
-            <label>ID Usuario</label>
-            <input type="text" id="idusuario" style="width: 100%;" />
-        </div>
-        <div style="flex: 1;">
-            <label>Fecha/Hora</label>
-            <input type="text" id="fecha" style="width: 100%;" />
-        </div>
-    </div>
-    <div style="text-align: right;">
-        <button onclick="guardarCliente()">Guardar</button>
-    </div>
-</div>
-
-<script>
-    function guardarCliente() {
-        const razon = document.getElementById("razon").value;
-        const giro = document.getElementById("giro").value;
-        const idusuario = document.getElementById("idusuario").value;
-        const fecha = document.getElementById("fecha").value;
-
-        const contenido = `Razón Social: ${razon}\nGiro: ${giro}\nID Usuario: ${idusuario}\nFecha/Hora: ${fecha}`;
-
-        if (parent.setContenidoGuardado) {
-            parent.setContenidoGuardado(contenido);
-        }
-    }
-</script>
-
-//clienteproveedorGuardado
-<textarea id="textarea_guardado" style="width: 100%; height: 100px; box-sizing: border-box;"></textarea>
-
-//index
-
 <?php
-while (!file_exists($POSICION . "conexion.php")) {
+while (!file_exists($POSICION."conexion.php")) {
     $POSICION .= "../";
 }
 require($POSICION . 'formHeader.php');
 ?>
 
+<!-- IMPORTACIONES -->
 <script src="<?= $POSICION ?>js/general.js"></script>
+<script src="<?= $POSICION ?>js/util.js"></script>
+<script src="<?= $POSICION ?>componente/database/class.php"></script>
+<script src="<?= $POSICION ?>componente/buscadores/clienteproveedor2/class.js"></script>
+<script src="<?= $POSICION ?>componente/mascara/lightbox-iframe.js"></script>
+<script src="<?= $POSICION ?>componente/mascara/iu.js"></script>
 
+<!-- INTERFAZ PRINCIPAL -->
 <div style="width: 400px; font-family: Arial, sans-serif;">
     <!-- Buscar por RUT -->
     <div style="margin-bottom: 10px;">
         <label>RUT</label><br>
-        <input type="text" id="rut" style="width: 200px;" />
-        <button onclick="expandirCliente()">🔍</button>
+        <input type="text" id="rut" class="txt_obligatorio" style="width: 200px;" />
+        <input type="hidden" id="idclienteproveedor" />
+        <!-- Ubicación del componente buscador -->
+        <div id="divBuscador" style="display: inline;"></div>
         <button onclick="limpiarCampos()">Limpiar</button>
     </div>
 
@@ -70,10 +32,12 @@ require($POSICION . 'formHeader.php');
     <div id="contenedorClienteGuardado" style="margin-top: 10px;"></div>
 </div>
 
+<!-- Configuración de iframes -->
 <script>
     const imgDir = "<?= $POSICION ?>img/<?= $CSS_STYLE ?>/rows/";
-    const urlCliente = "<?= $POSICION ?>form/clienteproveedor2.php";
-    const urlGuardado = "<?= $POSICION ?>form/clienteproveedor_guardado.php";
+    const urlCliente = "<?= $POSICION ?>form/form1.php";
+const urlGuardado = "<?= $POSICION ?>form/form2.php";
+
 
     const frame_cliente = new MyIFrame('clienteProveedor', 'CLIENTE / PROVEEDOR', urlCliente, imgDir);
     frame_cliente.height = 140;
@@ -89,13 +53,44 @@ require($POSICION . 'formHeader.php');
 
     document.getElementById("contenedorClienteProveedor").appendChild(document.getElementById("iframe_clienteProveedor"));
     document.getElementById("contenedorClienteGuardado").appendChild(document.getElementById("iframe_clienteGuardado"));
+</script>
 
-    // Expande el primer iframe visualmente
-    function expandirCliente() {
+<!-- Configuración del buscador ClienteProveedor2 -->
+<script>
+    const clienteproveedor = new ClienteProveedor2();
+
+    clienteproveedor.ubicacion = document.getElementById("divBuscador");
+    clienteproveedor.creaBotonBorrar = false;
+    clienteproveedor.creaBotonCrear = false;
+    clienteproveedor.elementoBuscador = "rut";
+    clienteproveedor.islightbox = true;
+
+    clienteproveedor.elementos = {
+        rut: document.getElementById("rut"),
+        idclienteproveedor: document.getElementById("idclienteproveedor")
+    };
+
+    // Este método se activa automáticamente al seleccionar un cliente
+    clienteproveedor.afterEvent = function(self) {
         frame_cliente.expand();
-    }
 
-    // Función llamada desde el primer iframe al guardar
+        // Esperamos a que el iframe esté completamente cargado
+        setTimeout(() => {
+            const doc = document.getElementById("iframe_clienteProveedor").contentWindow.document;
+
+            doc.getElementById("razon").value = self.datos.razonsocial || "";
+            doc.getElementById("giro").value = self.datos.giro || "";
+            doc.getElementById("idusuario").value = self.datos.idusuario || "";
+            doc.getElementById("fecha").value = self.datos.fecha || "";
+        }, 300);
+    };
+
+    clienteproveedor.New();
+</script>
+
+<!-- Funciones adicionales -->
+<script>
+    // Al guardar en el primer iframe, se copia texto al segundo iframe
     function setContenidoGuardado(texto) {
         const textarea = document.getElementById("iframe_clienteGuardado").contentWindow.document.getElementById("textarea_guardado");
         textarea.value = texto;
@@ -105,6 +100,7 @@ require($POSICION . 'formHeader.php');
     // Limpia todo
     function limpiarCampos() {
         document.getElementById("rut").value = "";
+        document.getElementById("idclienteproveedor").value = "";
 
         frame_cliente.contract();
         frame_guardado.contract();
@@ -123,3 +119,40 @@ require($POSICION . 'formHeader.php');
 </script>
 
 <?php require($POSICION . "formFoot.php"); ?>
+
+
+//form1
+<div style="padding: 10px;">
+    <label>Razón Social</label><br>
+    <input type="text" id="razon" style="width: 100%;" /><br>
+
+    <label>Giro</label><br>
+    <input type="text" id="giro" style="width: 100%;" /><br>
+
+    <label>ID Usuario</label><br>
+    <input type="text" id="idusuario" style="width: 100%;" /><br>
+
+    <label>Fecha/Hora</label><br>
+    <input type="text" id="fecha" style="width: 100%;" /><br><br>
+
+    <button onclick="guardarCliente()">Guardar</button>
+</div>
+
+<script>
+    function guardarCliente() {
+        const razon = document.getElementById("razon").value;
+        const giro = document.getElementById("giro").value;
+        const idusuario = document.getElementById("idusuario").value;
+        const fecha = document.getElementById("fecha").value;
+
+        const contenido = `Razón Social: ${razon}\nGiro: ${giro}\nID Usuario: ${idusuario}\nFecha/Hora: ${fecha}`;
+
+        if (parent.setContenidoGuardado) {
+            parent.setContenidoGuardado(contenido);
+        }
+    }
+</script>
+
+
+//form2
+<textarea id="textarea_guardado" style="width: 100%; height: 100px;"></textarea>
