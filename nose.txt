@@ -1,63 +1,109 @@
+<?php
+    /* OBTENEMOS LA POSICIÓN DE LA RAÍZ */
+    while (!file_exists($POSICION . "conexion.php")) {
+        $POSICION .= "../";
+    }
+    require($POSICION . "formHeader.php");
+?>
+
+<!-- IMPORTA EL COMPONENTE MESSAGEBOX -->
+<script type="text/javascript" src="<?= $POSICION ?>componente/messagebox/class.php?v=1"></script>
+
+<!-- DIV PARA MOSTRAR LA TABLA -->
+<div id="personal" style="margin: 20px;"></div>
+
+<!-- SCRIPT -->
 <script type="text/javascript">
-let BD = new BASE();
-BD.commandFile = "form/training/messagebox/ejercicio2/command.php";
+    // Declaración global
+    var MSGBOX;
+    var BD = new BASE();
+    BD.commandFile = "form/training/messagebox/ejercicio2/command.php";
 
-// Instancia global del MSGBOX
-let MSGBOX = new IU_MSGBOX();
+    // Esperar que todo cargue
+    document.addEventListener("DOMContentLoaded", function () {
+        // Inicializar MSGBOX
+        MSGBOX = {
+            ventana: typeof IU_MSGBOX,
+            initialize: function () {
+                this.ventana = new IU_MSGBOX();
+            },
+            Abrir: function (conf) {
+                this.ventana.titulocss = conf.titulocss || '';
+                this.ventana.titulo = conf.titulo;
+                var texto = conf.texto || '';
+                this.ventana.texto = '<center>' + texto + '</center>';
+                this.ventana.botonera = conf.botonera || 3; // 3 = Si/No por defecto
+                this.ventana.conCerrar = (conf.conCerrar !== undefined) ? conf.conCerrar : this.ventana.conCerrar;
+                this.ventana.fnretorno = conf.fnretorno || 'respuestaBasica';
+                this.ventana.url = '<?= $POSICION ?>';
+                this.ventana.top = conf.top || '25%';
+                this.ventana.objeto = conf.objeto || {};
+                this.ventana.Messagebox();
+                this.ventana.zzIndex = 2;
+            },
+        };
+        MSGBOX.initialize();
+        
+        // Cargar los datos iniciales
+        cargarPersonal();
+    });
 
-// Función para cargar la tabla al iniciar
-function cargarTabla() {
-    var resultado = BD.send("cmd=obtienePersonal");
+    function cargarPersonal() {
+        var resultado = BD.send("cmd=obtienePersonal");
+        let txt = "";
 
-    let txt = `
-    <table width="80%" border="1px solid #ddd" style="border-collapse:collapse;">
-    <thead font-size:25px;">
-    <tr style="background-color:#EAEAEA">
+        txt += `
+        <table width="80%" border="1px solid #ddd" style="border-collapse:collapse;">
+        <thead font-size:25px;">
+        <tr style="background-color:#EAEAEA">
         <th style="font-weight:bold; padding:10px; width:100px;">Nombre</th>
         <th style="font-weight:bold; padding:10px; width:200px;">Apellidos</th>
         <th style="font-weight:bold; padding:10px; width:50px;">FechaHora</th>
-        <th style="font-weight:bold; padding:10px; width:50px;">Acción</th>
-    </tr>`;
+        <th style="font-weight:bold; padding:10px; width:50px;">Accion</th>
+        </tr>
+        `;
 
-    for (let x = 0; x < resultado.numrows; x++) {
-        let id = BD.getField(resultado, 'idpersona', x);
-        txt += `<tr>
-            <td style="padding:10px;">${BD.getField(resultado, 'nombre', x)}</td>
-            <td>${BD.getField(resultado, 'apellidopaterno', x)} ${BD.getField(resultado, 'apellidomaterno', x)}</td>
-            <td>${BD.getField(resultado, 'fechahora', x)}</td>
-            <td>
-                <button onclick="confirmarEliminacion(${id})" 
-                    style="background-color:#ED3D32; border-radius:5px; color:white; border:none; padding:6px; margin-left:10px; cursor:pointer;">
-                    Eliminar
-                </button>
-            </td>
-        </tr>`;
+        for (x=0 ; x < resultado.numrows ; x++) {
+            txt+= `<tr>
+            <td style="padding:10px;"> ${BD.getField(resultado,'nombre',x)} </td>
+            <td> ${BD.getField(resultado,'apellidopaterno',x)} ${BD.getField(resultado,'apellidomaterno',x)} </td>
+            <td> ${BD.getField(resultado,'fechahora',x)} </td>
+            <td> <button onclick="confirmarEliminar(${BD.getField(resultado,'id',x)})" type="button" style="background-color:#ED3D32; border-radius:5px; color:white; border:none; padding: 6px; margin-left:10px;cursor:pointer;">Eliminar</button> </td>
+            </tr>`;
+        }
+        txt += `</table>`;
+
+        document.getElementById("personal").innerHTML = txt;
     }
 
-    txt += `</table>`;
-    document.getElementById("personal").innerHTML = txt;
-}
-
-// Función que muestra el MSGBOX de confirmación
-function confirmarEliminacion(id) {
-    MSGBOX.titulo = "Eliminar Registros";
-    MSGBOX.texto = "<center>¿Está seguro que desea realizar esta acción?</center>";
-    MSGBOX.botonera = 3; // Sí / No
-    MSGBOX.fnretorno = "accionEliminar";
-    MSGBOX.objeto = { idpersona: id };
-    MSGBOX.Messagebox();
-}
-
-// Función que ejecuta la eliminación si se confirma
-function accionEliminar(resp) {
-    if (resp === "S") {
-        let id = MSGBOX.objeto.idpersona;
-        let respuesta = BD.send(`cmd=eliminarPersonal&idpersona=${id}`);
-        cargarTabla(); // Refresca la tabla
+    function confirmarEliminar(id) {
+        MSGBOX.Abrir({
+            titulo: 'Eliminar Registros',
+            texto: '¿Está seguro que desea realizar esta acción?',
+            fnretorno: 'procesarEliminacion',
+            botonera: 3, // 3 = Si/No
+            objeto: { id: id }
+        });
     }
-    MSGBOX.HideInfo();
-}
 
-// Ejecuta la carga inicial al abrir la página
-window.onload = cargarTabla;
+    function procesarEliminacion(respuesta) {
+        if (respuesta === 'S') {
+            // Obtener el ID del registro a eliminar
+            const id = MSGBOX.ventana.objeto.id;
+            
+            // Enviar comando para eliminar
+            var resultado = BD.send("cmd=eliminarPersonal&id=" + id);
+            
+            if (resultado.status === "success") {
+                alert("Registro eliminado correctamente");
+                // Recargar la tabla
+                cargarPersonal();
+            } else {
+                alert("Error al eliminar el registro: " + resultado.message);
+            }
+        }
+        
+        // Cerrar el messagebox en cualquier caso
+        MSGBOX.ventana.HideInfo();
+    }
 </script>
