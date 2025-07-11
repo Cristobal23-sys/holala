@@ -1,3 +1,50 @@
+//clienteproveedor2
+<div>
+    <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+        <div style="flex: 1;">
+            <label>Razón Social</label>
+            <input type="text" id="razon" style="width: 100%;" />
+        </div>
+        <div style="flex: 1;">
+            <label>Giro</label>
+            <input type="text" id="giro" style="width: 100%;" />
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+        <div style="flex: 1;">
+            <label>ID Usuario</label>
+            <input type="text" id="idusuario" style="width: 100%;" />
+        </div>
+        <div style="flex: 1;">
+            <label>Fecha/Hora</label>
+            <input type="text" id="fecha" style="width: 100%;" />
+        </div>
+    </div>
+    <div style="text-align: right;">
+        <button onclick="guardarCliente()">Guardar</button>
+    </div>
+</div>
+
+<script>
+    function guardarCliente() {
+        const razon = document.getElementById("razon").value;
+        const giro = document.getElementById("giro").value;
+        const idusuario = document.getElementById("idusuario").value;
+        const fecha = document.getElementById("fecha").value;
+
+        const contenido = `Razón Social: ${razon}\nGiro: ${giro}\nID Usuario: ${idusuario}\nFecha/Hora: ${fecha}`;
+
+        if (parent.setContenidoGuardado) {
+            parent.setContenidoGuardado(contenido);
+        }
+    }
+</script>
+
+//clienteproveedorGuardado
+<textarea id="textarea_guardado" style="width: 100%; height: 100px; box-sizing: border-box;"></textarea>
+
+//index
+
 <?php
 while (!file_exists($POSICION . "conexion.php")) {
     $POSICION .= "../";
@@ -5,68 +52,73 @@ while (!file_exists($POSICION . "conexion.php")) {
 require($POSICION . 'formHeader.php');
 ?>
 
-<!-- Cargar JS del componente -->
 <script src="<?= $POSICION ?>js/general.js"></script>
 
-<!-- Contenedor principal -->
 <div style="width: 400px; font-family: Arial, sans-serif;">
-
-    <!-- Buscador por RUT -->
+    <!-- Buscar por RUT -->
     <div style="margin-bottom: 10px;">
-        <label for="rut">RUT</label><br>
-        <input type="text" id="rut" name="rut" style="width: 200px;" />
-        <button onclick="buscarCliente()">🔍</button>
+        <label>RUT</label><br>
+        <input type="text" id="rut" style="width: 200px;" />
+        <button onclick="expandirCliente()">🔍</button>
         <button onclick="limpiarCampos()">Limpiar</button>
     </div>
 
-    <!-- IFrame Cliente/Proveedor -->
+    <!-- Iframe Cliente / Proveedor -->
     <div id="contenedorClienteProveedor"></div>
 
-    <!-- IFrame Cliente/Proveedor Guardado -->
+    <!-- Iframe Cliente / Proveedor Guardado -->
     <div id="contenedorClienteGuardado" style="margin-top: 10px;"></div>
-
 </div>
 
-<script type="text/javascript">
-    // Ruta de imágenes del componente
+<script>
     const imgDir = "<?= $POSICION ?>img/<?= $CSS_STYLE ?>/rows/";
-
-    // URL del iframe CLIENTE / PROVEEDOR
     const urlCliente = "<?= $POSICION ?>form/clienteproveedor2.php";
     const urlGuardado = "<?= $POSICION ?>form/clienteproveedor_guardado.php";
 
-    // Crear el primer componente
     const frame_cliente = new MyIFrame('clienteProveedor', 'CLIENTE / PROVEEDOR', urlCliente, imgDir);
     frame_cliente.height = 140;
     frame_cliente.verLoading = true;
     frame_cliente.show(true);
     frame_cliente.contract();
 
-    // Crear el segundo componente
     const frame_guardado = new MyIFrame('clienteGuardado', 'CLIENTE / PROVEEDOR GUARDADO', urlGuardado, imgDir);
     frame_guardado.height = 120;
     frame_guardado.verLoading = true;
     frame_guardado.show(true);
     frame_guardado.contract();
 
-    // Insertar en el DOM
     document.getElementById("contenedorClienteProveedor").appendChild(document.getElementById("iframe_clienteProveedor"));
     document.getElementById("contenedorClienteGuardado").appendChild(document.getElementById("iframe_clienteGuardado"));
 
-    // Función Buscar
-    function buscarCliente() {
-        const rut = document.getElementById("rut").value;
-        if (rut) {
-            // Puedes agregar lógica para consultar por RUT
-            frame_cliente.expand();
-        }
+    // Expande el primer iframe visualmente
+    function expandirCliente() {
+        frame_cliente.expand();
     }
 
-    // Función Limpiar
+    // Función llamada desde el primer iframe al guardar
+    function setContenidoGuardado(texto) {
+        const textarea = document.getElementById("iframe_clienteGuardado").contentWindow.document.getElementById("textarea_guardado");
+        textarea.value = texto;
+        frame_guardado.expand();
+    }
+
+    // Limpia todo
     function limpiarCampos() {
         document.getElementById("rut").value = "";
+
         frame_cliente.contract();
         frame_guardado.contract();
+
+        setTimeout(() => {
+            const doc1 = document.getElementById("iframe_clienteProveedor").contentWindow.document;
+            doc1.getElementById("razon").value = "";
+            doc1.getElementById("giro").value = "";
+            doc1.getElementById("idusuario").value = "";
+            doc1.getElementById("fecha").value = "";
+
+            const doc2 = document.getElementById("iframe_clienteGuardado").contentWindow.document;
+            doc2.getElementById("textarea_guardado").value = "";
+        }, 300);
     }
 </script>
 
