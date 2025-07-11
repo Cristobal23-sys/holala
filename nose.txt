@@ -1,109 +1,73 @@
 <?php
-    /* OBTENEMOS LA POSICIÓN DE LA RAÍZ */
-    while (!file_exists($POSICION . "conexion.php")) {
-        $POSICION .= "../";
-    }
-    require($POSICION . "formHeader.php");
+while (!file_exists($POSICION . "conexion.php")) {
+    $POSICION .= "../";
+}
+require($POSICION . 'formHeader.php');
 ?>
 
-<!-- IMPORTA EL COMPONENTE MESSAGEBOX -->
-<script type="text/javascript" src="<?= $POSICION ?>componente/messagebox/class.php?v=1"></script>
+<!-- Cargar JS del componente -->
+<script src="<?= $POSICION ?>js/general.js"></script>
 
-<!-- DIV PARA MOSTRAR LA TABLA -->
-<div id="personal" style="margin: 20px;"></div>
+<!-- Contenedor principal -->
+<div style="width: 400px; font-family: Arial, sans-serif;">
 
-<!-- SCRIPT -->
+    <!-- Buscador por RUT -->
+    <div style="margin-bottom: 10px;">
+        <label for="rut">RUT</label><br>
+        <input type="text" id="rut" name="rut" style="width: 200px;" />
+        <button onclick="buscarCliente()">🔍</button>
+        <button onclick="limpiarCampos()">Limpiar</button>
+    </div>
+
+    <!-- IFrame Cliente/Proveedor -->
+    <div id="contenedorClienteProveedor"></div>
+
+    <!-- IFrame Cliente/Proveedor Guardado -->
+    <div id="contenedorClienteGuardado" style="margin-top: 10px;"></div>
+
+</div>
+
 <script type="text/javascript">
-    // Declaración global
-    var MSGBOX;
-    var BD = new BASE();
-    BD.commandFile = "form/training/messagebox/ejercicio2/command.php";
+    // Ruta de imágenes del componente
+    const imgDir = "<?= $POSICION ?>img/<?= $CSS_STYLE ?>/rows/";
 
-    // Esperar que todo cargue
-    document.addEventListener("DOMContentLoaded", function () {
-        // Inicializar MSGBOX
-        MSGBOX = {
-            ventana: typeof IU_MSGBOX,
-            initialize: function () {
-                this.ventana = new IU_MSGBOX();
-            },
-            Abrir: function (conf) {
-                this.ventana.titulocss = conf.titulocss || '';
-                this.ventana.titulo = conf.titulo;
-                var texto = conf.texto || '';
-                this.ventana.texto = '<center>' + texto + '</center>';
-                this.ventana.botonera = conf.botonera || 3; // 3 = Si/No por defecto
-                this.ventana.conCerrar = (conf.conCerrar !== undefined) ? conf.conCerrar : this.ventana.conCerrar;
-                this.ventana.fnretorno = conf.fnretorno || 'respuestaBasica';
-                this.ventana.url = '<?= $POSICION ?>';
-                this.ventana.top = conf.top || '25%';
-                this.ventana.objeto = conf.objeto || {};
-                this.ventana.Messagebox();
-                this.ventana.zzIndex = 2;
-            },
-        };
-        MSGBOX.initialize();
-        
-        // Cargar los datos iniciales
-        cargarPersonal();
-    });
+    // URL del iframe CLIENTE / PROVEEDOR
+    const urlCliente = "<?= $POSICION ?>form/clienteproveedor2.php";
+    const urlGuardado = "<?= $POSICION ?>form/clienteproveedor_guardado.php";
 
-    function cargarPersonal() {
-        var resultado = BD.send("cmd=obtienePersonal");
-        let txt = "";
+    // Crear el primer componente
+    const frame_cliente = new MyIFrame('clienteProveedor', 'CLIENTE / PROVEEDOR', urlCliente, imgDir);
+    frame_cliente.height = 140;
+    frame_cliente.verLoading = true;
+    frame_cliente.show(true);
+    frame_cliente.contract();
 
-        txt += `
-        <table width="80%" border="1px solid #ddd" style="border-collapse:collapse;">
-        <thead font-size:25px;">
-        <tr style="background-color:#EAEAEA">
-        <th style="font-weight:bold; padding:10px; width:100px;">Nombre</th>
-        <th style="font-weight:bold; padding:10px; width:200px;">Apellidos</th>
-        <th style="font-weight:bold; padding:10px; width:50px;">FechaHora</th>
-        <th style="font-weight:bold; padding:10px; width:50px;">Accion</th>
-        </tr>
-        `;
+    // Crear el segundo componente
+    const frame_guardado = new MyIFrame('clienteGuardado', 'CLIENTE / PROVEEDOR GUARDADO', urlGuardado, imgDir);
+    frame_guardado.height = 120;
+    frame_guardado.verLoading = true;
+    frame_guardado.show(true);
+    frame_guardado.contract();
 
-        for (x=0 ; x < resultado.numrows ; x++) {
-            txt+= `<tr>
-            <td style="padding:10px;"> ${BD.getField(resultado,'nombre',x)} </td>
-            <td> ${BD.getField(resultado,'apellidopaterno',x)} ${BD.getField(resultado,'apellidomaterno',x)} </td>
-            <td> ${BD.getField(resultado,'fechahora',x)} </td>
-            <td> <button onclick="confirmarEliminar(${BD.getField(resultado,'id',x)})" type="button" style="background-color:#ED3D32; border-radius:5px; color:white; border:none; padding: 6px; margin-left:10px;cursor:pointer;">Eliminar</button> </td>
-            </tr>`;
+    // Insertar en el DOM
+    document.getElementById("contenedorClienteProveedor").appendChild(document.getElementById("iframe_clienteProveedor"));
+    document.getElementById("contenedorClienteGuardado").appendChild(document.getElementById("iframe_clienteGuardado"));
+
+    // Función Buscar
+    function buscarCliente() {
+        const rut = document.getElementById("rut").value;
+        if (rut) {
+            // Puedes agregar lógica para consultar por RUT
+            frame_cliente.expand();
         }
-        txt += `</table>`;
-
-        document.getElementById("personal").innerHTML = txt;
     }
 
-    function confirmarEliminar(id) {
-        MSGBOX.Abrir({
-            titulo: 'Eliminar Registros',
-            texto: '¿Está seguro que desea realizar esta acción?',
-            fnretorno: 'procesarEliminacion',
-            botonera: 3, // 3 = Si/No
-            objeto: { id: id }
-        });
-    }
-
-    function procesarEliminacion(respuesta) {
-        if (respuesta === 'S') {
-            // Obtener el ID del registro a eliminar
-            const id = MSGBOX.ventana.objeto.id;
-            
-            // Enviar comando para eliminar
-            var resultado = BD.send("cmd=eliminarPersonal&id=" + id);
-            
-            if (resultado.status === "success") {
-                alert("Registro eliminado correctamente");
-                // Recargar la tabla
-                cargarPersonal();
-            } else {
-                alert("Error al eliminar el registro: " + resultado.message);
-            }
-        }
-        
-        // Cerrar el messagebox en cualquier caso
-        MSGBOX.ventana.HideInfo();
+    // Función Limpiar
+    function limpiarCampos() {
+        document.getElementById("rut").value = "";
+        frame_cliente.contract();
+        frame_guardado.contract();
     }
 </script>
+
+<?php require($POSICION . "formFoot.php"); ?>
