@@ -1,158 +1,230 @@
 <?php
+
+$POSICION = (isset($POSICION) ? $POSICION : "");
 while (!file_exists($POSICION."conexion.php")) {
-    $POSICION .= "../";
+    $POSICION.="../";
 }
-require($POSICION . 'formHeader.php');
+
+require($POSICION."conexion.php");
+require($POSICION."componente/datagrid3/class.php");
+
+$DG = new DATAGRID("documento");
+
+$DG->onInitialize = "DataGrid_onInitialize";
+$DG->onCreate     = "DataGrid_onCreate";
+
+$DG->sqlLimit    = 20;
+
+$DG->sqlQuery    = "SELECT 
+                        d.iddocumento,
+                        d.folio,
+                        d.tipomovimiento,
+                        td.descripcion as tipo_documento,
+                        cp.rut as cliente_rut,
+                        d.fechadocumento,
+                        d.montototal
+                    FROM public.documento d
+                    LEFT JOIN public.tipodocumento td ON d.tipodocumento = td.tipodocumento
+                    LEFT JOIN public.clienteproveedor cp ON d.idclienteproveedor = cp.idclienteproveedor
+                    ORDER BY d.fechadocumento DESC";
+
+// Obtener SYSKEY para generar enlaces PDF
+$RS = $Base->query("SELECT p.key FROM preferencias p;");
+$row = $Base->to_object($RS);
+$SYSKEY = $row->key;
+
+// Función para generar link PDF
+function getLinkPDF($tipomovimiento, $iddocumento, $cedible = true) {
+    global $POSICION, $SYSKEY;
+    $cedible = $cedible == true ? "true" : "false";
+    $key = $SYSKEY;
+    $metodo = "GDIPDF";
+    
+    $K = (md5($key . $metodo . $tipomovimiento . $iddocumento . $cedible));
+    $K = substr($K, 0, 10);
+    
+    $linkPDF = $POSICION . "descargar.php?p1=" . $K . "&p2=" . $metodo . "&m=" . $tipomovimiento . "&i=" . $iddocumento . "&c=" . $cedible;
+    return ($linkPDF);
+}
+
+// Clase para columna Folio con botón de descarga PDF
+class Folio extends DATAGRID_COL
+{
+    public function Folio($id = "folio")
+    {
+        $this->head = "Folio";
+        $this->width = "15%";
+        $this->orderby = "folio";
+        $this->filter = "folio";
+        $this->type = "varchar";
+    }
+
+    public function getValue()
+    {
+        $folio = $this->row["folio"];
+        $iddocumento = $this->row["iddocumento"];
+        $tipomovimiento = $this->row["tipomovimiento"];
+        
+        $linkPDF = getLinkPDF($tipomovimiento, $iddocumento, true);
+        
+        return ('<center>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.open(\''.$linkPDF.'\', \'_blank\')">
+                        <i class="fa fa-file-pdf-o"></i> '.$folio.'
+                    </button>
+                </center>');
+    }
+}
+
+// Clase para columna Documento
+class TipoDocumento extends DATAGRID_COL
+{
+    public function TipoDocumento($id = "tipo_documento")
+    {
+        $this->head = "Documento";
+        $this->width = "20%";
+        $this->orderby = "tipo_documento";
+        $this->filter = "tipo_documento";
+        $this->type = "varchar";
+    }
+
+    public function getValue()
+    {
+        $documento = $this->row["tipo_documento"];
+        return ('<center>'.$documento.'</center>');
+    }
+}
+
+// Clase para columna RUT Cliente
+class ClienteRut extends DATAGRID_COL
+{
+    public function ClienteRut($id = "cliente_rut")
+    {
+        $this->head = "RUT (Cliente)";
+        $this->width = "15%";
+        $this->orderby = "cliente_rut";
+        $this->filter = "cliente_rut";
+        $this->type = "varchar";
+    }
+
+    public function getValue()
+    {
+        $rut = $this->row["cliente_rut"];
+        return ('<center>'.$rut.'</center>');
+    }
+}
+
+// Clase para columna Fecha Documento
+class FechaDocumento extends DATAGRID_COL
+{
+    public function FechaDocumento($id = "fechadocumento")
+    {
+        $this->head = "Fecha Documento";
+        $this->width = "20%";
+        $this->orderby = "fechadocumento";
+        $this->filter = "fechadocumento";
+        $this->type = "date";
+    }
+
+    public function getValue()
+    {
+        $fecha = $this->row["fechadocumento"];
+        // Formatear fecha si es necesario
+        if ($fecha) {
+            $fechaFormateada = date("d/m/Y", strtotime($fecha));
+            return ('<center>'.$fechaFormateada.'</center>');
+        }
+        return ('<center>-</center>');
+    }
+}
+
+// Clase para columna Monto Total
+class MontoTotal extends DATAGRID_COL
+{
+    public function MontoTotal($id = "montototal")
+    {
+        $this->head = "Monto Total";
+        $this->width = "20%";
+        $this->orderby = "montototal";
+        $this->filter = "montototal";
+        $this->type = "numeric";
+    }
+
+    public function getValue()
+    {
+        $monto = $this->row["montototal"];
+        if ($monto !== null && $monto !== '') {
+            // Formatear monto con separadores de miles
+            $montoFormateado = number_format($monto, 0, ',', '.');
+            return ('<center>$'.$montoFormateado.'</center>');
+        }
+        return ('<center>$0</center>');
+    }
+}
+
+// Agregar columnas al DataGrid
+$DG->addCol(new Folio("folio"));
+$DG->addCol(new TipoDocumento("tipo_documento"));
+$DG->addCol(new ClienteRut("cliente_rut"));
+$DG->addCol(new FechaDocumento("fechadocumento"));
+$DG->addCol(new MontoTotal("montototal"));
+
+if (($_SERVER['HTTP_DG3'] == $DG->id) || ($_SERVER['HTTP_USER_AGENT'] == $DG->id)) {
+    $DG->reload();
+}
+
+require($POSICION."formHeader.php");
 ?>
 
-<!-- IMPORTACIONES -->
-<script src="<?= $POSICION ?>js/general.js"></script>
-<script src="<?= $POSICION ?>js/util.js"></script>
-<script src="<?= $POSICION ?>componente/database/class.php"></script>
-<script src="<?= $POSICION ?>componente/buscadores/clienteproveedor2/class.js"></script>
-<script src="<?= $POSICION ?>componente/mascara/lightbox-iframe.js"></script>
-<script src="<?= $POSICION ?>componente/mascara/iu.js"></script>
+<style>
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    font-size: 12px;
+}
 
-<!-- INTERFAZ PRINCIPAL -->
-<div style="width: 400px; font-family: Arial, sans-serif;">
-    <!-- Buscar por RUT -->
-    <div style="margin-bottom: 10px;">
-        <label>RUT</label><br>
-        <input type="text" id="rut" class="txt_obligatorio" style="width: 200px;" />
-        <input type="hidden" id="idclienteproveedor" />
-        <!-- Ubicación del componente buscador -->
-        <div id="divBuscador" style="display: inline;"></div>
-        <button onclick="limpiarCampos()">Limpiar</button>
-    </div>
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+}
 
-    <!-- Iframe Cliente / Proveedor -->
-    <div id="contenedorClienteProveedor"></div>
+.btn-sm {
+    padding: 2px 6px;
+    font-size: 11px;
+}
 
-    <!-- Iframe Cliente / Proveedor Guardado -->
-    <div id="contenedorClienteGuardado" style="margin-top: 10px;"></div>
+.fa-file-pdf-o:before {
+    content: "📄";
+}
+</style>
+
+<script type="text/javascript">
+    function DataGrid_onInitialize() {
+        // Inicialización del DataGrid
+    }
+
+    function reziseDataGrid(dg) {
+        // Con esto, ocultamos las barras de desplazamiento innecesarias
+        document.body.style.overflowX = "hidden";
+    }
+
+    /**
+     * Función a ejecutarse al momento de inicializarse datagrid. Definida por $DG->onCreate = "DataGrid_onCreate";
+     */
+    function DataGrid_onCreate() {
+        reziseDataGrid(this);
+        this.reload();
+    }
+</script>
+
+<div>
+    <h3>Grilla de Documentos</h3>
+    <?php $DG->Create();?>
 </div>
 
-<!-- Configuración de iframes -->
-<script>
-    const imgDir = "<?= $POSICION ?>img/<?= $CSS_STYLE ?>/rows/";
-    const urlCliente = "<?= $POSICION ?>form/form1.php";
-const urlGuardado = "<?= $POSICION ?>form/form2.php";
-
-
-    const frame_cliente = new MyIFrame('clienteProveedor', 'CLIENTE / PROVEEDOR', urlCliente, imgDir);
-    frame_cliente.height = 140;
-    frame_cliente.verLoading = true;
-    frame_cliente.show(true);
-    frame_cliente.contract();
-
-    const frame_guardado = new MyIFrame('clienteGuardado', 'CLIENTE / PROVEEDOR GUARDADO', urlGuardado, imgDir);
-    frame_guardado.height = 120;
-    frame_guardado.verLoading = true;
-    frame_guardado.show(true);
-    frame_guardado.contract();
-
-    document.getElementById("contenedorClienteProveedor").appendChild(document.getElementById("iframe_clienteProveedor"));
-    document.getElementById("contenedorClienteGuardado").appendChild(document.getElementById("iframe_clienteGuardado"));
-</script>
-
-<!-- Configuración del buscador ClienteProveedor2 -->
-<script>
-    const clienteproveedor = new ClienteProveedor2();
-
-    clienteproveedor.ubicacion = document.getElementById("divBuscador");
-    clienteproveedor.creaBotonBorrar = false;
-    clienteproveedor.creaBotonCrear = false;
-    clienteproveedor.elementoBuscador = "rut";
-    clienteproveedor.islightbox = true;
-
-    clienteproveedor.elementos = {
-        rut: document.getElementById("rut"),
-        idclienteproveedor: document.getElementById("idclienteproveedor")
-    };
-
-    // Este método se activa automáticamente al seleccionar un cliente
-    clienteproveedor.afterEvent = function(self) {
-        frame_cliente.expand();
-
-        // Esperamos a que el iframe esté completamente cargado
-        setTimeout(() => {
-            const doc = document.getElementById("iframe_clienteProveedor").contentWindow.document;
-
-            doc.getElementById("razon").value = self.datos.razonsocial || "";
-            doc.getElementById("giro").value = self.datos.giro || "";
-            doc.getElementById("idusuario").value = self.datos.idusuario || "";
-            doc.getElementById("fecha").value = self.datos.fecha || "";
-        }, 300);
-    };
-
-    clienteproveedor.New();
-</script>
-
-<!-- Funciones adicionales -->
-<script>
-    // Al guardar en el primer iframe, se copia texto al segundo iframe
-    function setContenidoGuardado(texto) {
-        const textarea = document.getElementById("iframe_clienteGuardado").contentWindow.document.getElementById("textarea_guardado");
-        textarea.value = texto;
-        frame_guardado.expand();
-    }
-
-    // Limpia todo
-    function limpiarCampos() {
-        document.getElementById("rut").value = "";
-        document.getElementById("idclienteproveedor").value = "";
-
-        frame_cliente.contract();
-        frame_guardado.contract();
-
-        setTimeout(() => {
-            const doc1 = document.getElementById("iframe_clienteProveedor").contentWindow.document;
-            doc1.getElementById("razon").value = "";
-            doc1.getElementById("giro").value = "";
-            doc1.getElementById("idusuario").value = "";
-            doc1.getElementById("fecha").value = "";
-
-            const doc2 = document.getElementById("iframe_clienteGuardado").contentWindow.document;
-            doc2.getElementById("textarea_guardado").value = "";
-        }, 300);
-    }
-</script>
-
-<?php require($POSICION . "formFoot.php"); ?>
-
-
-//form1
-<div style="padding: 10px;">
-    <label>Razón Social</label><br>
-    <input type="text" id="razon" style="width: 100%;" /><br>
-
-    <label>Giro</label><br>
-    <input type="text" id="giro" style="width: 100%;" /><br>
-
-    <label>ID Usuario</label><br>
-    <input type="text" id="idusuario" style="width: 100%;" /><br>
-
-    <label>Fecha/Hora</label><br>
-    <input type="text" id="fecha" style="width: 100%;" /><br><br>
-
-    <button onclick="guardarCliente()">Guardar</button>
-</div>
-
-<script>
-    function guardarCliente() {
-        const razon = document.getElementById("razon").value;
-        const giro = document.getElementById("giro").value;
-        const idusuario = document.getElementById("idusuario").value;
-        const fecha = document.getElementById("fecha").value;
-
-        const contenido = `Razón Social: ${razon}\nGiro: ${giro}\nID Usuario: ${idusuario}\nFecha/Hora: ${fecha}`;
-
-        if (parent.setContenidoGuardado) {
-            parent.setContenidoGuardado(contenido);
-        }
-    }
-</script>
-
-
-//form2
-<textarea id="textarea_guardado" style="width: 100%; height: 100px;"></textarea>
+<?php require($POSICION."formFoot.php"); ?>
