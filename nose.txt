@@ -1,7 +1,3 @@
-echo '<a id="reenviar_'.$row->folio.'" href="javascript:;" onclick="
-if(typeof LIBRO !== \'undefined\' && typeof LIBRO.reenviarNotificacion === \'function\') {
-    LIBRO.reenviarNotificacion(this, \''.$row->folio.'\', \''.$row->rut.'\');
-} else {
-    console.error(\'LIBRO.reenviarNotificacion no está definida\');
-}
-"><img src="'.$POSICION.'img/ico/notificacion.png" border="0" alt="Reenviar notificacion" title="Reenviar notifi doc"></a>';
+echo '<a id="reenviar_'.$row->folio.'" href="javascript:;" onclick="LIBRO.reenviarNotificacion(this, \''.$row->folio.'\', \''.$row->rut.'\')">
+<img src="'.$POSICION.'img/ico/notificacion.png" border="0" alt="Reenviar notificacion" title="Reenviar notifi doc">
+</a>';
